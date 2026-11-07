@@ -191,51 +191,80 @@ function toast(t){const d=el("div",{class:"toast",text:t});document.body.appendC
 /* ================= prices & norms ================= */
 /* Default prices in EGP, researched Nov 2026; editable in settings. "est" marks a rough estimate. */
 const PRICE_DEFS=[
- ["beef","لحمة كندوز (كيلو)",445],["chicken","فراخ بيضا (كيلو)",80],["rice","رز (كيلو)",35],["pasta","مكرونة (كيلو)",28],
- ["oil","زيت (لتر)",100],["sugar","سكر (كيلو)",38],["eggs","بيضة واحدة",4.9],["tea","شاي (كيلو)",262],
- ["milk","لبن معبأ (لتر) - تقديري",45],["cheese","جبنة بيضا (كيلو) - تقديري",180],["bread","رغيف عيش سوق حر - تقديري",2.5],
+ ["beef","لحمة كندوز (كيلو)",445],["chicken","فراخ بيضا (كيلو)",80],
+ ["milk","لبن معبأ (لتر) - تقديري",45],["cheese","جبنة بيضا (كيلو) - تقديري",180],["eggs","بيضة واحدة",4.9],
+ ["rice","رز (كيلو)",35],["pasta","مكرونة (كيلو)",28],["legumes","بقوليات فول/عدس (كيلو) - تقديري",60],
+ ["oil","زيت (لتر)",100],["sugar","سكر (كيلو)",38],["honey","عسل (كيلو) - تقديري",250],["tea","شاي (كيلو)",262],
  ["veg","خضار (متوسط الكيلو) - تقديري",25],["fruit","فاكهة (متوسط الكيلو) - تقديري",40],
- ["formula","علبة لبن أطفال صناعي - تقديري",350],["diapers","بامبرز للطفل في الشهر - تقديري",1400],["cleaning","منظفات للبيت في الشهر - تقديري",700]
+ ["bread","رغيف عيش سوق حر - تقديري",2.5],["soda","مشروبات غازية (لتر) - تقديري",20],
+ ["condiments","عطارة وصوصات وخل ومخلل للبيت في الشهر - تقديري",600],
+ ["personal","نظافة شخصية للفرد في الشهر - تقديري",250],["cleaning","منظفات للبيت في الشهر - تقديري",700]
 ];
 const LEVELS={econ:{t:"اقتصادي",m:.85},mid:{t:"متوسط",m:1},comfy:{t:"مريح",m:1.3}};
-/* monthly quantities per person by age group */
+/* monthly quantities per person by age group (personal = share of a person's toiletries) */
 const NORMS={
- adult:{beef:2,chicken:3,rice:3,pasta:1.5,oil:1.2,sugar:1.5,eggs:30,tea:.15,milk:3,cheese:1,bread:60,veg:15,fruit:6},
- teen:{beef:2,chicken:3,rice:3.5,pasta:2,oil:1.2,sugar:1.5,eggs:30,tea:.05,milk:6,cheese:1,bread:60,veg:15,fruit:8},
- child:{beef:1,chicken:2,rice:2,pasta:1,oil:.6,sugar:1,eggs:20,tea:0,milk:6,cheese:.7,bread:30,veg:10,fruit:6},
- toddler:{beef:.5,chicken:1,rice:1,pasta:.5,oil:.3,sugar:.3,eggs:15,tea:0,milk:10,cheese:.4,bread:10,veg:6,fruit:5},
- infant:{}
+ adult:{beef:2,chicken:3,milk:3,cheese:1,eggs:30,rice:3,pasta:1.5,legumes:1,oil:1.2,sugar:1.5,honey:.25,tea:.15,veg:15,fruit:6,bread:60,soda:3,personal:1},
+ teen:{beef:2,chicken:3,milk:6,cheese:1,eggs:30,rice:3.5,pasta:2,legumes:1,oil:1.2,sugar:1.5,honey:.25,tea:.05,veg:15,fruit:8,bread:60,soda:4,personal:1},
+ child:{beef:1,chicken:2,milk:6,cheese:.7,eggs:20,rice:2,pasta:1,legumes:.5,oil:.6,sugar:1,honey:.2,tea:0,veg:10,fruit:6,bread:30,soda:2,personal:.6},
+ toddler:{beef:.5,chicken:1,milk:10,cheese:.4,eggs:15,rice:1,pasta:.5,legumes:.3,oil:.3,sugar:.3,honey:.1,tea:0,veg:6,fruit:5,bread:10,soda:0,personal:.4},
+ infant:{personal:.4}
 };
-const TYPE_ITEMS={groceries:["rice","pasta","oil","sugar","eggs","tea","cheese","bread"],meat:["beef","chicken"],produce:["veg","fruit"],dairy:["milk"],baby:["formula","diapers"],cleaning:["cleaning"]};
-const TYPE_LABEL={groceries:"بقالة",meat:"لحوم وفراخ",produce:"خضار وفاكهة",dairy:"لبن",baby:"لبن أطفال وبامبرز",cleaning:"منظفات"};
+/* which prices make up each item type; condiments and cleaning are per household */
+const TYPE_ITEMS={meat:["beef","chicken"],dairy:["milk","cheese","eggs"],staples:["rice","pasta","legumes"],pantry:["oil","sugar","honey","tea"],condiments:[],produce:["veg","fruit"],bread:["bread"],drinks:["soda"],personal:["personal"],cleaning:[]};
+const TYPE_LABEL={meat:"لحوم وفراخ",dairy:"لبن وجبن وبيض",staples:"رز ومكرونة وبقوليات",pantry:"زيت وسكر وعسل وشاي",condiments:"عطارة وصوصات وخل ومخلل",produce:"خضار وفاكهة",bread:"عيش",drinks:"مشروبات غازية",personal:"نظافة شخصية",cleaning:"منظفات البيت"};
+const FOOD_ITEMS=[["لحوم وفراخ","meat"],["لبن وجبن وبيض","dairy"],["رز ومكرونة وبقوليات","staples"],["زيت وسكر وعسل وشاي","pantry"],["عطارة وصوصات وخل ومخلل","condiments"],["خضار وفاكهة","produce"],["عيش","bread"],["مشروبات غازية","drinks"],["نظافة شخصية (معجون، شاور، شامبو…)","personal"],["منظفات البيت","cleaning"],["مياه شرب وأنبوبة"]];
 const ageGroup=a=>a<1?"infant":a<4?"toddler":a<13?"child":a<18?"teen":"adult";
 
 /* ================= state ================= */
 const NOW=new Date(),CUR=mkey(NOW);
 function defaultData(){
   const prices={};PRICE_DEFS.forEach(([k,,p])=>prices[k]=p);
-  return{version:1,settings:{spendLimitPct:80,level:"mid",theme:"auto",apiKey:"",prices,pricesNote:"أسعار نوفمبر 2026"},
+  return{version:1,schema:2,settings:{spendLimitPct:80,level:"mid",theme:"auto",apiKey:"",prices,pricesNote:"أسعار نوفمبر 2026"},
     family:[],goal:{name:"صندوق طوارئ",amount:0},months:{}};
 }
 function G(name,items){return{id:uid(),name,items:items.map(([n,t])=>({id:uid(),name:n,type:t||"",plan:0}))}}
 function templateGroups(){return[
   G("السكن",[["إيجار"],["قسط الشقة"],["صيانة واتحاد ملاك"]]),
-  G("البيت والأكل",[["بقالة وسوبرماركت","groceries"],["لحوم وفراخ","meat"],["خضار وفاكهة","produce"],["لبن","dairy"],["منظفات","cleaning"],["مياه شرب وأنبوبة"]]),
+  G("الأكل",FOOD_ITEMS),
   G("الفواتير والاشتراكات",[["كهرباء"],["مياه"],["غاز طبيعي"],["إنترنت البيت"],["باقات الموبايل"],["اشتراكات AI"]]),
   G("العربية",[["قسط العربية"],["بنزين"],["صيانة دورية"],["تأمين وترخيص (مقسومين على 12)"]]),
-  G("الأطفال",[["حضانة"],["كيدز إريا وأنشطة"],["لبن أطفال وبامبرز","baby"],["لبس ولعب"]]),
-  G("خروجات وترفيه",[["خروجات"],["مطاعم ودليفري"]]),
-  G("مصاريف شخصية",[["لبس"],["حلاقة وعناية"]]),
-  G("طوارئ ومناسبات",[["طوارئ وعلاج"],["هدايا ومناسبات"]])
+  G("الأطفال",[["حضانة"],["كيدز إريا وأنشطة"],["لبس ولعب"]]),
+  G("خروجات وترفيه",[["خروجات"],["كافيه"],["مطاعم ودليفري"]]),
+  G("مصاريف شخصية",[["لبس"]]),
+  G("طوارئ",[["طوارئ"]])
 ]}
+/* v1 -> v2: new food items and trimmed groups, keeping every amount and recorded expense */
+function migrate(){
+  if((D.schema||1)>=2)return;
+  Object.values(D.months).forEach(m=>{
+    const used=id=>(m.entries||[]).some(e=>e.item===id);
+    const find=n=>m.groups.find(g=>g.name===n);
+    const drop=(g,n)=>{if(!g)return;g.items=g.items.filter(it=>it.name!==n||used(it.id)||val(it.plan)>0)};
+    const food=find("البيت والأكل");
+    if(food){
+      const old=food.items.slice(),take=n=>{const i=old.findIndex(it=>it.name===n);return i<0?null:old.splice(i,1)[0]};
+      const carry={"لحوم وفراخ":"لحوم وفراخ","لبن":"لبن وجبن وبيض","بقالة وسوبرماركت":"رز ومكرونة وبقوليات","خضار وفاكهة":"خضار وفاكهة","منظفات":"منظفات البيت","مياه شرب وأنبوبة":"مياه شرب وأنبوبة"};
+      const byNew={};Object.entries(carry).forEach(([o,n])=>{const it=take(o);if(it)byNew[n]=it});
+      food.name="الأكل";
+      food.items=FOOD_ITEMS.map(([n,t])=>{const it=byNew[n];return it?Object.assign(it,{name:n,type:t||""}):{id:uid(),name:n,type:t||"",plan:0}}).concat(old);
+    }
+    drop(find("الأطفال"),"لبن أطفال وبامبرز");
+    const out=find("خروجات وترفيه");if(out&&!out.items.some(it=>it.name==="كافيه"))out.items.splice(1,0,{id:uid(),name:"كافيه",type:"",plan:0});
+    drop(find("مصاريف شخصية"),"حلاقة وعناية");
+    const em=find("طوارئ ومناسبات");if(em){drop(em,"هدايا ومناسبات");em.name="طوارئ";em.items.forEach(it=>{if(it.name==="طوارئ وعلاج")it.name="طوارئ"})}
+  });
+  D.family.forEach(p=>{delete p.formula;delete p.diapers});
+  D.schema=2;save();
+}
 let D=null,curKey=CUR,tab="month",editMode=false;
 const Bridge=window.AndroidBridge||null;
 function load(){
   let raw="";try{raw=Bridge?Bridge.load():(localStorage.getItem("masrofy")||"")}catch(e){}
   try{D=raw?JSON.parse(raw):null}catch(e){D=null}
   if(!D||!D.months){D=defaultData()}
-  const def=defaultData();D.settings=Object.assign(def.settings,D.settings);D.settings.prices=Object.assign(def.settings.prices,D.settings.prices||{});
-  ensureMonth(CUR);
+  const def=defaultData(),dp=def.settings.prices,sp=(D.settings&&D.settings.prices)||{};D.settings=Object.assign(def.settings,D.settings);D.settings.prices=Object.assign(dp,sp);
+  D.family=D.family||[];if(!D.schema&&!Object.keys(D.months).length)D.schema=2;
+  migrate();ensureMonth(CUR);
 }
 let saveT=null;
 function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,300)}
@@ -260,10 +289,9 @@ function estimates(){
     const g=ageGroup(+p.age||0),n=NORMS[g];
     Object.keys(TYPE_ITEMS).forEach(t=>TYPE_ITEMS[t].forEach(k=>{if(n[k])out[t]+=n[k]*(P[k]||0)}));
     if(p.extraMilk)out.dairy+=8*(P.milk||0);
-    if(p.formula)out.baby+=4*(P.formula||0);
-    if(p.diapers)out.baby+=P.diapers||0;
   });
-  out.cleaning=(P.cleaning||0)*(fam.length>4?1.3:1);
+  const big=fam.length>4?1.3:1;
+  out.condiments=(P.condiments||0)*big;out.cleaning=(P.cleaning||0)*big;
   const mul=LEVELS[D.settings.level].m;Object.keys(out).forEach(t=>out[t]=Math.round(out[t]*mul/50)*50);
   return out;
 }
@@ -422,14 +450,12 @@ function viewFamily(main){
     const g=ageGroup(+p.age||0);
     const flags=el("div",{class:"flags"});
     if(g==="child"||g==="toddler"||g==="teen")flags.appendChild(el("label",{},[el("input",{type:"checkbox",checked:p.extraMilk,onchange:e=>{p.extraMilk=e.target.checked;save()}}),"بيشرب لبن كتير"]));
-    if(g==="infant"||g==="toddler"){flags.appendChild(el("label",{},[el("input",{type:"checkbox",checked:p.formula,onchange:e=>{p.formula=e.target.checked;save()}}),"لبن صناعي"]));
-      flags.appendChild(el("label",{},[el("input",{type:"checkbox",checked:p.diapers,onchange:e=>{p.diapers=e.target.checked;save()}}),"بامبرز"]))}
     card.appendChild(el("div",{class:"member"},[
       el("input",{value:p.name,placeholder:"الاسم",onchange:e=>{p.name=e.target.value;save()}}),
       el("input",{class:"money",inputmode:"decimal",value:p.age,placeholder:"السن","aria-label":"السن",onchange:e=>{p.age=val(e.target.value);save();render()}}),
       el("button",{class:"x",text:"×","aria-label":"احذف",onclick:()=>{fam.splice(i,1);save();render()}}),flags]));
   });
-  card.appendChild(el("div",{class:"chips"},[["كبير",30],["مراهق",15],["طفل",6],["طفل صغير",2],["رضيع",.5]].map(([t,a])=>el("button",{text:"+ "+t,onclick:()=>{fam.push({id:uid(),name:"",age:a,extraMilk:false,formula:a<1,diapers:a<3});save();render()}}))));
+  card.appendChild(el("div",{class:"chips"},[["كبير",30],["مراهق",15],["طفل",6],["طفل صغير",2],["رضيع",.5]].map(([t,a])=>el("button",{text:"+ "+t,onclick:()=>{fam.push({id:uid(),name:"",age:a,extraMilk:false});save();render()}}))));
   main.appendChild(card);
   const lv=el("section",{class:"card"},[el("h2",{text:"مستوى المعيشة"}),el("div",{class:"seg"},Object.entries(LEVELS).map(([k,v])=>el("button",{"aria-pressed":D.settings.level===k?"true":"false",text:v.t,onclick:()=>{D.settings.level=k;save();render()}})))]);
   main.appendChild(lv);
@@ -465,9 +491,9 @@ function viewSettings(main){
     el("div",{class:"grid2"},[el("button",{text:Bridge?"حفظ نسخة في Downloads":"نزّل نسخة",onclick:()=>exportData(true)}),el("button",{text:"ابعت نسخة (شير)",onclick:()=>exportData(false)})]),
     el("button",{text:"استرجاع من نسخة",onclick:()=>file.click()}),file,
     el("button",{class:"danger",text:"امسح كل الداتا",onclick:()=>confirmSheet("تمسح كل الشهور والإعدادات؟ مش هينفع ترجعها.","امسح الكل",()=>{D=defaultData();ensureMonth(CUR);curKey=CUR;save();tab="month";render()})})]));
-  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.1"}));
+  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.2"}));
 }
-function load2(){const def=defaultData();D.settings=Object.assign(def.settings,D.settings||{});D.settings.prices=Object.assign(def.settings.prices,D.settings.prices||{});D.family=D.family||[];D.goal=D.goal||def.goal;ensureMonth(CUR)}
+function load2(){const def=defaultData(),dp=def.settings.prices,sp=(D.settings&&D.settings.prices)||{};D.settings=Object.assign(def.settings,D.settings||{});D.settings.prices=Object.assign(dp,sp);D.family=D.family||[];D.goal=D.goal||def.goal;migrate();ensureMonth(CUR)}
 function exportData(toDownloads){
   saveNow();const s=JSON.stringify(D,null,1),name=`masrofy-backup-${mkey(NOW)}-${NOW.getDate()}.json`;
   if(Bridge){if(toDownloads){const ok=Bridge.saveToDownloads(s,name);toast(ok?"اتحفظت في Downloads":"ما اتحفظتش، جرّب «ابعت نسخة»")}else Bridge.share(s,name)}
