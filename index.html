@@ -140,6 +140,14 @@ main>*{flex-shrink:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:.88rem;z-index:30}
 .empty{text-align:center;color:var(--muted);padding:20px}
 .ai-out{white-space:pre-wrap;font-size:.9rem;background:var(--sunk);border-radius:10px;padding:10px}
+.scan{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-style:dashed;border-color:var(--accent);color:var(--accent);font-weight:600;background:var(--ok-soft)}
+.rline{display:grid;grid-template-columns:auto minmax(0,1fr) 5.6rem;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.rline .rn{font-size:.88rem;min-width:0}
+.rline select{grid-column:2 / -1;font-size:.85rem;padding:6px 8px}
+.rline.off{opacity:.45}
+button:disabled{opacity:.45;cursor:not-allowed}
+[hidden]{display:none!important}
+.rsum{position:sticky;bottom:0;background:var(--surface);padding-top:8px;display:flex;flex-direction:column;gap:8px}
 </style>
 </head>
 <body>
@@ -491,7 +499,7 @@ function viewSettings(main){
     el("div",{class:"grid2"},[el("button",{text:Bridge?"حفظ نسخة في Downloads":"نزّل نسخة",onclick:()=>exportData(true)}),el("button",{text:"ابعت نسخة (شير)",onclick:()=>exportData(false)})]),
     el("button",{text:"استرجاع من نسخة",onclick:()=>file.click()}),file,
     el("button",{class:"danger",text:"امسح كل الداتا",onclick:()=>confirmSheet("تمسح كل الشهور والإعدادات؟ مش هينفع ترجعها.","امسح الكل",()=>{D=defaultData();ensureMonth(CUR);curKey=CUR;save();tab="month";render()})})]));
-  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.2"}));
+  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.4"}));
 }
 function load2(){const def=defaultData(),dp=def.settings.prices,sp=(D.settings&&D.settings.prices)||{};D.settings=Object.assign(def.settings,D.settings||{});D.settings.prices=Object.assign(dp,sp);D.family=D.family||[];D.goal=D.goal||def.goal;migrate();ensureMonth(CUR)}
 function exportData(toDownloads){
@@ -521,6 +529,8 @@ function addSheet(itemId){
   const m=M();let expr="",sel=itemId||null;
   openSheet(sh=>{
     sh.appendChild(el("div",{class:"hd"},[el("h2",{text:"مصروف جديد"}),el("button",{class:"ghost",text:"إلغاء",onclick:closeSheet})]));
+    sh.appendChild(el("div",{class:"grid2"},[el("button",{class:"scan",onclick:()=>{closeSheet();pasteSheet()}},["📋 الصق نص الإيصال"]),el("button",{class:"scan",onclick:()=>{closeSheet();pickReceipt()}},["📷 صوّر الإيصال"])]));
+    sh.appendChild(el("small",{class:"muted",style:"text-align:center",text:"مفيش إيصال؟ سجّل المصروف بإيدك هنا:"}));
     const ex=el("div",{class:"expr"}),rs=el("div",{class:"res num",text:"0"});
     sh.appendChild(el("div",{class:"display"},[ex,rs]));
     const upd=()=>{ex.textContent=expr.replace(/\*/g,"×").replace(/\//g,"÷");const v=calcExpr(expr);rs.textContent=isNaN(v)?"…":fmt(v)};
@@ -551,6 +561,212 @@ function entriesSheet(it){
   });
 }
 
+/* ================= receipts ================= */
+/* Two ways in: paste text copied with the phone's Live Text (free, on-device), or a photo read by Claude (needs API key). */
+const SKIP_RE=/(amount|المبلغ|مبلغ|sale|purchase|شراء|approved|موافق|tid|mid|rrn|auth|batch|terminal|ref|trace|expiry|aid|tvr|cardholder|merchant id|رقم التاجر|إجمالي|الاجمالي|الإجمالى|اجمالى|المجموع|total|subtotal|ضريبة|ضريبه|vat|tax|نقد|نقدي|كاش|cash|visa|فيزا|ماستر|card|بطاقة|الباقي|الباقى|change|المدفوع|paid|خصم|discount|رقم الفاتورة|فاتورة|invoice|tel|تليفون|هاتف|كاشير|cashier|التاريخ|date|الوقت|time|شكرا|thank)/i;
+const TOTAL_RE=/(amount|المبلغ|مبلغ|sale|purchase|شراء|إجمالي|الاجمالي|الإجمالى|اجمالى|المجموع|total|الصافي|net)/i;
+/* item type from product name; first match wins */
+const KW=[
+ ["drinks",/(بيبسي|بيبسى|كوكا|كولا|سفن|ميرندا|شويبس|سبرايت|فانتا|عصير|جهينة عصير|مياه غازية|صودا|ريد بول|pepsi|cola|juice|sprite|7up|fanta)/i],
+ ["water",/(مياه|مياة|ماء|نستله|أكوافينا|اكوافينا|بركة|دساني|aquafina|water)/i],
+ ["meat",/(لحم|لحمة|لحمه|كندوز|بتلو|ضاني|فراخ|دجاج|صدور|وراك|فرخة|كبدة|كبده|مفروم|سجق|برجر|بانيه|سمك|بلطي|جمبري|تونة|تونه|لانشون|بسطرمة|chicken|beef|meat|fish|tuna)/i],
+ ["dairy",/(لبن|حليب|جبن|جبنة|جبنه|زبادي|زبادى|زبدة|زبده|قشطة|رايب|بيض|cheese|milk|yogurt|egg|butter)/i],
+ ["staples",/(رز|أرز|ارز|مكرونة|مكرونه|اسباجتي|سباجتي|شعرية|شعريه|فول|عدس|فاصوليا|لوبيا|حمص|دقيق|rice|pasta|flour)/i],
+ ["pantry",/(زيت|سكر|عسل|شاي|شاى|قهوة|قهوه|نسكافيه|سمنة|سمنه|مربى|حلاوة|oil|sugar|honey|tea|coffee)/i],
+ ["produce",/(طماطم|بطاطس|بصل|خيار|فلفل رومي|فلفل الوان|جزر|كوسة|كوسه|باذنجان|بتنجان|ثوم|ليمون|موز|تفاح|برتقال|يوسفي|عنب|فراولة|مانجو|بطيخ|كانتلوب|خضار|خضروات|فاكهة|فاكهه|خس|سبانخ|ملوخية|بقدونس|كزبرة|شبت|جرجير)/i],
+ ["condiments",/(ملح|فلفل|كمون|بهارات|توابل|صوص|كاتشب|مايونيز|مايونيز|خل|مخلل|طحينة|طحينه|مستردة|كاري|بابريكا|شطة|ketchup|sauce|vinegar|mayo)/i],
+ ["bread",/(عيش|خبز|توست|فينو|بقسماط|كرواسون|bread|toast)/i],
+ ["personal",/(معجون|فرشاة|فرشه|شامبو|شاور|صابون|بلسم|ديودورانت|مزيل عرق|حلاقة|شفرات|فوط|مناديل|كريم|لوشن|shampoo|soap|tooth|deo|tissue)/i],
+ ["cleaning",/(فيري|فيرى|كلور|ديتول|منظف|مسحوق|بريل|برسيل|اريال|أريال|داوني|معطر|سفنج|اسفنج|جلاكس|مطهر|كلوركس|dettol|clorox|ariel|persil)/i]
+];
+/* card / bank slips: shop name -> budget item (by item-name pattern), or a suggested new item */
+const BANK_RE=/^(.*\b(bank|banque|cib|nbe|qnb|hsbc|adib|aaib|fawry|geidea|paymob|valu|meeza|visa|mastercard)\b.*|.*(بنك|البنك|فوري|ميزة).*)$/i;
+const MERCH=[
+ [/(بنزين|بنزينة|بنزينه|وقود|petrol|fuel|gas ?station|wataniya|وطنية|موبيل|mobil|توتال|total ?energies|شل|shell|كالتكس|caltex|امارات مصر|emarat|chill ?out|تشيل اوت|gastec|غازتك|misr petroleum|مصر للبترول|اكسون|exxon)/i,/بنزين/,"بنزين"],
+ [/(cafe|café|coffee|كافيه|كافى|قهوة|ستاربكس|starbucks|costa|كوستا|cilantro|سيلانترو|beano|بينوز|tbs|dunkin|دانكن|كوفي|caribou|كاريبو|espresso)/i,/كافيه/,"كافيه"],
+ [/(restaurant|مطعم|kfc|كنتاكي|mcdonald|ماكدونالدز|pizza|بيتزا|burger|برجر|هارديز|hardee|buffalo|بافلو|talabat|طلبات|elmenus|المنيوز|كشري|شاورما|كبابجي|grill|مشويات|sushi|سوشي)/i,/مطاعم|دليفري/,"مطاعم ودليفري"],
+ [/(pharmac|صيدلي|صيدلية|العزبي|ezaby|seif|سيف|19011|رشدي)/i,/طوارئ|علاج/,"صيدلية"],
+ [/(zara|h&m|defacto|ديفاكتو|lc waikiki|وايكيكي|max|ملابس|fashion|clothing|shoes|أحذية|جزم|town team|تاون تيم|concrete|كونكريت)/i,/^لبس$/,"لبس"],
+ [/(vodafone|فودافون|orange|أورانج|اورانج|etisalat|e& |اتصالات|we |وي |telecom|المصرية للاتصالات)/i,/باقات|موبايل/,"باقات الموبايل"],
+ [/(car ?wash|مغسلة|غسيل|service center|مركز خدمة|إطارات|كاوتش|tires|زيت موتور|صيانة)/i,/صيانة دورية/,"صيانة العربية"],
+ [/(uber|أوبر|اوبر|careem|كريم|didi|ديدي|indrive|اندرايف|swvl|سويفل|مترو|metro ticket|parking|جراج|باركينج)/i,/مواصلات|جراج/,"مواصلات"],
+ [/(kids|كيدز|ملاهي|ألعاب|العاب|kidzania|play ?zone|بلاي)/i,/كيدز/,"كيدز إريا وأنشطة"],
+ [/(cinema|سينما|vox|فوكس|bowling|بولينج|club|نادي)/i,/خروجات/,"خروجات"],
+ [/(carrefour|كارفور|spinneys|سبينيس|hyper ?one|هايبر وان|kazyon|كازيون|seoudi|سعودي|gourmet|جورميه|خير زمان|أولاد رجب|اولاد رجب|فتح الله|بيم|bim|metro market|مترو ماركت|lulu|لولو|oscar|أوسكار|supermarket|سوبر ماركت|ماركت|بقالة)/i,/بقالة|رز ومكرونة|سوبرماركت/,"سوبر ماركت"]
+];
+function merchantTarget(text,all){for(const[re,itemRe,suggest]of MERCH)if(re.test(text)){const x=all.find(a=>itemRe.test(a.it.name));return x?{id:x.it.id}:{suggest}}return null}
+/* which saved price a product updates, and its unit */
+const PK=[["eggs",/(بيض|egg)/i,"egg"],["beef",/(لحم|لحمة|لحمه|كندوز|بتلو|مفروم|بقري)/i,"kg"],["chicken",/(فراخ|دجاج|صدور|وراك|فرخة)/i,"kg"],
+ ["rice",/(رز|أرز|ارز|rice)/i,"kg"],["pasta",/(مكرونة|مكرونه|اسباجتي|pasta)/i,"kg"],["legumes",/(فول|عدس)/i,"kg"],["oil",/(زيت|oil)/i,"L"],
+ ["sugar",/(سكر|sugar)/i,"kg"],["honey",/(عسل|honey)/i,"kg"],["tea",/(شاي|شاى|tea)/i,"kg"],["cheese",/(جبن|جبنة|جبنه|cheese)/i,"kg"],
+ ["milk",/(^|\s)(لبن|حليب|milk)/i,"L"],["soda",/(بيبسي|كوكا|كولا|سفن|ميرندا|شويبس|سبرايت|pepsi|cola|sprite)/i,"L"]];
+const UNIT_TXT={kg:"الكيلو",L:"اللتر",egg:"البيضة"};
+function numOf(s){s=normDigits(s);if(/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s))s=s.replace(/,/g,"");else s=s.replace(",",".");return parseFloat(s)}
+function guessType(name){for(const[t,re]of KW)if(re.test(name))return t;return""}
+function priceKeyOf(name){if(/زبادي|زبادى|yogurt/i.test(name))return null;for(const[k,re,u]of PK)if(re.test(name))return{k,u};return null}
+/* size written in the product name, e.g. "زيت 2.2 لتر", "رز 5ك", "جبنة 500ج", "طبق بيض 30" */
+function sizeOf(name,unit){
+  const s=normDigits(name);
+  if(unit==="egg"){const m=s.match(/(\d+)\s*(بيضة|بيضه|بيض|egg)/i)||s.match(/(بيض|egg)\D*(\d+)/i);if(m){const n=+(m[1].match(/\d/)?m[1]:m[2]);if(n>0&&n<=60)return n}if(/طبق/.test(s))return 30;return null}
+  const m=s.match(/(\d+(?:[.,]\d+)?)\s*(كجم|كيلو|كغم|كغ|kg|جرام|جم|غم|gm|ج(?=\s|$)|g(?=\s|$)|ك(?=\s|$)|لتر|لت|L(?=\s|$)|l(?=\s|$)|ل(?=\s|$)|مل|ml)/i);
+  if(!m)return null;const v=numOf(m[1]),u=m[2].toLowerCase();
+  if(/^(جرام|جم|غم|gm|ج|g)$/.test(u))return unit==="kg"?v/1000:null;
+  if(/^(مل|ml)$/.test(u))return unit==="L"?v/1000:null;
+  if(/^(لتر|لت|l|ل)$/.test(u))return unit==="L"?v:null;
+  return unit==="kg"?v:null;
+}
+/* fills in type/target/unit price for a line, from what was read or guessed */
+function enrich(l,all,map){
+  if(l.slip&&!l.target){const mt=merchantTarget(l.name,all);if(mt){if(mt.id)l.target=mt.id;else{l.target="__new";l.newName=mt.suggest}}}
+  const learned=map[normName(l.name)];const byName=n=>{const x=all.find(a=>a.it.name===n);return x?x.it.id:""};
+  if(learned&&byName(learned))l.target=byName(learned);
+  if(!l.target){const t=guessType(l.name);
+    if(t==="water"){const x=all.find(a=>/مياه شرب/.test(a.it.name));if(x)l.target=x.it.id}
+    else if(t){const x=all.find(a=>a.it.type===t);if(x)l.target=x.it.id}}
+  if(!l.unitPrice){const pk=priceKeyOf(l.name);if(pk){l.priceKey=pk.k;l.unit=pk.u;
+    let q=l.qty&&l.qty>0?l.qty:null;const size=sizeOf(l.name,pk.u);
+    if(size)q=size*(l.count||1);else if(q&&pk.u==="egg"&&q<5)q=null;
+    if(q&&l.amount>0)l.unitPrice=Math.round(l.amount/q*100)/100}}
+  else if(l.priceKey&&!l.unit){const p=PK.find(x=>x[0]===l.priceKey);if(p)l.unit=p[2]}
+  if(!l.target){const mt=merchantTarget(l.name+" "+(l.store||""),all);if(mt){if(mt.id)l.target=mt.id;else{l.target="__new";l.newName=mt.suggest}}}
+  if(!l.target&&!l.newName){l.target="__new";l.newName=l.name.slice(0,30)}
+  return l;
+}
+/* text copied from a receipt photo (Live Text / Google Lens) -> lines */
+function parseReceiptText(txt){
+  const raw=normDigits(txt).split(/\r?\n/).map(s=>s.replace(/\s+/g," ").trim()).filter(Boolean);
+  const NUM=/\d+(?:[.,]\d+)*/g,LET=/[A-Za-z؀-ۿ]{2,}/;
+  let total=0,store="";const items=[],names=[],prices=[];
+  raw.forEach((ln,i)=>{
+    if(/[*xX•#]{3,}\s*\d{2,4}/.test(ln))return; /* masked card number */
+    const nums=(ln.match(NUM)||[]).filter(n=>!/^\d{8,}$/.test(n.replace(/[.,]/g,"")));
+    const hasL=LET.test(ln);
+    /* text after the last number (e.g. "مياه 1.5 لتر") means that number is a size, not the price */
+    if(hasL&&nums.length){const last=nums[nums.length-1],tail=ln.slice(ln.lastIndexOf(last)+last.length);if(LET.test(tail)||/[A-Za-z\u0600-\u06FF]/.test(tail.trim())){nums.length=0}}
+    if(SKIP_RE.test(ln)){if(TOTAL_RE.test(ln)&&nums.length){const v=numOf(nums[nums.length-1]);if(v>total)total=v}return}
+    if(hasL&&!nums.length){if(BANK_RE.test(ln)&&!MERCH.some(m=>m[0].test(ln)))return;if(!store&&!items.length&&!names.length&&i<5){store=ln;return}names.push(ln);return}
+    if(!hasL&&nums.length){const v=numOf(nums[nums.length-1]);if(v>0&&v<100000)prices.push({v,ln});return}
+    if(hasL&&nums.length){
+      const price=numOf(nums[nums.length-1]);if(!(price>0&&price<100000))return;
+      let qty=null,count=1;const mx=ln.match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
+      if(mx){const a=numOf(mx[1]),b=numOf(mx[2]);if(Math.abs(a*b-price)<=Math.max(1,price*.02)){if(Number.isInteger(a)&&a<50)count=a;else qty=a}}
+      let name=ln.replace(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/gi," ").replace(/(ج\.م|جنيه|جم\.|egp|le)\b/gi," ");
+      const lastNum=nums[nums.length-1];const idx=name.lastIndexOf(lastNum);if(idx>=0)name=name.slice(0,idx)+name.slice(idx+lastNum.length);
+      name=name.replace(/\b\d{6,}\b/g," ").replace(/\s+/g," ").trim();
+      items.push({name:name||"صنف",amount:price,qty,count});
+    }
+  });
+  /* Live Text sometimes reads names and prices as separate columns: pair them in order */
+  if(names.length>=2&&prices.length>=2){const n=Math.min(names.length,prices.length);
+    for(let i=0;i<n;i++){const ln=prices[i].ln;let qty=null,count=1;const mx=ln.match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
+      if(mx){const a=numOf(mx[1]),b=numOf(mx[2]);if(Number.isInteger(a)&&a<50)count=a;else qty=a}
+      items.push({name:names[i],amount:prices[i].v,qty,count})}}
+  /* a card slip has no items: one line with the shop name and the amount */
+  if(!items.length&&total>0)items.push({name:store||names[0]||"مشتريات",amount:total,slip:true});
+  return{store,total,items};
+}
+function pasteSheet(){
+  openSheet(sh=>{
+    sh.appendChild(el("div",{class:"hd"},[el("h2",{text:"إيصال من نص منسوخ"}),el("button",{class:"ghost",text:"إلغاء",onclick:closeSheet})]));
+    sh.appendChild(el("div",{class:"alert",style:"white-space:pre-line;font-size:.85rem",text:"على الآيفون: افتح صورة الإيصال من الصور، دوس على زرار النص (Live Text) تحت يمين الصورة، وبعدين «Copy All» أو حدد الكلام كله وانسخه.\nعلى الأندرويد: من Google Lens اختار Text ثم Copy.\nبعدها الصق هنا."}));
+    const ta=el("textarea",{rows:"8",placeholder:"الصق نص الإيصال هنا",style:"direction:rtl"});sh.appendChild(ta);
+    const msg=el("small",{class:"muted"});sh.appendChild(msg);
+    sh.appendChild(el("button",{class:"primary",text:"اقرا الإيصال",onclick:()=>{const r=parseReceiptText(ta.value);if(!r.items.length){msg.textContent="ما لقيتش أصناف بأسعار. اتأكد إنك نسخت النص كله، أو سجّل بإيدك.";msg.style.color="var(--danger)";return}closeSheet();receiptSheet(r)}}));
+  });
+}
+function pickReceipt(){
+  if(!D.settings.apiKey){openSheet(sh=>{sh.appendChild(el("h2",{text:"محتاج مفتاح Claude API"}));sh.appendChild(el("p",{class:"muted",text:"قراءة الصورة مباشرة بتستخدم Claude. حط المفتاح من الإعدادات > الذكاء الاصطناعي، أو استخدم «الصق نص الإيصال» وهو ببلاش."}));
+    sh.appendChild(el("div",{class:"grid2"},[el("button",{text:"الصق نص الإيصال",onclick:()=>{closeSheet();pasteSheet()}}),el("button",{class:"primary",text:"روح للإعدادات",onclick:()=>{closeSheet();tab="settings";render()}})]))});return}
+  const inp=el("input",{type:"file",accept:"image/*",style:"display:none"});
+  inp.addEventListener("change",()=>{const fs=[...inp.files];inp.remove();if(fs.length)scanReceipt(fs)});
+  document.body.appendChild(inp);inp.click();
+}
+function shrink(file){return new Promise((res,rej)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{const max=1600,k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",.85).split(",")[1])};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("مش قادر أفتح الصورة"))};img.src=url;
+})}
+const normName=s=>String(s||"").replace(/\s+/g," ").trim().toLowerCase();
+async function scanReceipt(files){
+  const m=M();let status;
+  openSheet(sh=>{sh.appendChild(el("h2",{text:"بيقرا الإيصال…"}));status=el("p",{class:"muted",text:"بيصغّر الصورة ويبعتها. ممكن ياخد نص دقيقة."});sh.appendChild(status)});
+  try{
+    const imgs=[];for(const f of files)imgs.push(await shrink(f));
+    const items=[];m.groups.forEach(g=>g.items.forEach(it=>items.push(`${it.id} = ${g.name} / ${it.name}`)));
+    const keys=PK.map(p=>p[0]).join("، ");
+    const prompt=`دي صورة إيصال شراء من مصر (ممكن تكون أكتر من صورة لنفس الإيصال). استخرج كل صنف اتشرى بسعره النهائي بعد أي خصم.\n\nوزّع كل صنف على أنسب بند من بنود ميزانيتي دي (اكتب الـid بالظبط):\n${items.join("\n")}\n\nلو مفيش بند مناسب خلي target فاضي واقترح اسم بند جديد قصير في new_item واسم المجموعة اللي يتحط فيها من أسماء المجموعات اللي فوق في new_group.\nلو الصنف بيتباع بالوزن أو الحجم أو العدد، حط الكمية الإجمالية في qty ووحدتها في unit (kg أو L أو egg) وسعر الوحدة في unit_price. مثال: 3 كيلو لحمة بـ 300 → qty 3، unit kg، unit_price 100. وحط في price_key واحد من دول لو الصنف منهم: ${keys}، أو سيبه فاضي.\nلو ده إيصال فيزا أو ماكينة دفع من البنك ومفيهوش أصناف، رجّع صنف واحد اسمه اسم التاجر بالمبلغ، واختار البند حسب نوع المكان (بنزينة → بنزين، كافيه → كافيه، مطعم → مطاعم ودليفري، صيدلية، محل لبس، إلخ).\nتجاهل سطور الإجمالي والضريبة والفكة وطريقة الدفع، بس لو فيه رسوم خدمة أو توصيل حطها كصنف. لو فيه خصم على الفاتورة كلها وزّعه على الأصناف بالنسبة.\n\nرد بـ JSON بس من غير أي كلام تاني بالشكل ده:\n{"store":"اسم المحل","date":"YYYY-MM-DD","total":0,"items":[{"name":"اسم الصنف زي ما هو مكتوب","amount":0,"qty":0,"unit":"","unit_price":0,"price_key":"","target":"id","new_item":"","new_group":""}]}`;
+    const txt=await claude(prompt,false,imgs);
+    const mt=txt.match(/\{[\s\S]*\}/);if(!mt)throw new Error("ما قدرتش أقرا الإيصال. صوّره تاني في نور كويس ومن غير ميل.");
+    const r=JSON.parse(mt[0]);if(!Array.isArray(r.items)||!r.items.length)throw new Error("ما لقيتش أصناف في الصورة.");
+    r.items=r.items.map(x=>{const g=x.new_group&&m.groups.find(g=>g.name===x.new_group);return{name:x.name,amount:+x.amount||0,qty:+x.qty||null,unit:x.unit||"",
+      unitPrice:+x.unit_price||null,priceKey:PK.some(p=>p[0]===x.price_key)?x.price_key:"",target:x.target||"",newName:x.target?"":(x.new_item||""),newGroup:g?g.id:""}});
+    closeSheet();receiptSheet(r);
+  }catch(e){if(status){status.textContent=e.message||String(e);status.style.color="var(--danger)"}}
+}
+function receiptSheet(r){
+  const m=M(),all=[];m.groups.forEach(g=>g.items.forEach(it=>all.push({it,g})));
+  const map=D.settings.receiptMap||(D.settings.receiptMap={});
+  const foodG=m.groups.find(g=>g.name==="الأكل")||m.groups[0];
+  const lines=r.items.map(x=>{const l=Object.assign({name:"صنف",amount:0,qty:null,count:1,unit:"",unitPrice:null,priceKey:"",target:"",newName:"",newGroup:""},x);
+    l.name=String(l.name||"صنف");l.amount=Math.round((+l.amount||0)*100)/100;l.store=r.items.length===1?(r.store||""):"";
+    if(l.target&&l.target!=="__new"&&!all.some(a=>a.it.id===l.target))l.target="";
+    if(l.newName&&!l.target)l.target="__new";
+    enrich(l,all,map);if(!l.newGroup&&l.newName){const sg={"مواصلات":/عربي/,"صيدلية":/طوارئ/,"صيانة العربية":/عربي/,"سوبر ماركت":/الأكل/}[l.newName];const g=sg&&m.groups.find(g=>sg.test(g.name));if(g)l.newGroup=g.id}if(!l.newGroup){const t=guessType(l.name);l.newGroup=(t&&t!=="water"?foodG:(m.groups.find(g=>/خروج/.test(g.name))&&false)||foodG).id}
+    l.on=l.amount>0;return l});
+  let updPrices=true;
+  openSheet(sh=>{
+    sh.appendChild(el("div",{class:"hd"},[el("div",{},[el("h2",{text:r.store||"إيصال"}),el("small",{class:"muted",text:`${lines.length} صنف${r.date?" · "+r.date:""}`})]),el("button",{class:"ghost",text:"إلغاء",onclick:closeSheet})]));
+    sh.appendChild(el("small",{class:"muted",text:"راجع البند اللي اتحط عليه كل صنف وعدّل لو محتاج. اللي تشيل علامته مش هيتسجل."}));
+    const box=el("div");
+    const sumEl=el("b",{class:"num"}),chk=el("small",{class:"muted",style:"white-space:pre-line"}),saveBtn=el("button",{class:"primary"});
+    const opts=()=>[el("option",{value:"",text:"— اختار البند —"}),el("option",{value:"__new",text:"➕ بند جديد…"})].concat(m.groups.map(g=>{const og=el("optgroup",{label:g.name});g.items.forEach(it=>og.appendChild(el("option",{value:it.id,text:it.name})));return og}));
+    const upd=()=>{const on=lines.filter(l=>l.on);const sum=on.reduce((a,l)=>a+l.amount,0);sumEl.textContent=fmt(sum);
+      const miss=on.filter(l=>!l.target||(l.target==="__new"&&!l.newName.trim())).length;
+      chk.textContent=(r.total?`إجمالي الإيصال ${fmt(r.total)}${Math.abs(r.total-sum)>1?" (فيه فرق "+fmt(Math.abs(r.total-sum))+"، راجع الأصناف)":" ✓"}`:"")+(miss?`\n${miss} صنف محتاج تختارله بند أو تشيل علامته`:"");
+      const n=new Set(on.map(l=>l.target==="__new"?"n:"+l.newName.trim():l.target).filter(Boolean)).size;saveBtn.textContent=`سجّل ${fmt(sum)} على ${n} بند`;saveBtn.disabled=!on.length||!!miss};
+    lines.forEach(l=>{
+      const row=el("div",{class:"rline"+(l.on?"":" off")});
+      const cb=el("input",{type:"checkbox",checked:l.on,style:"width:22px;height:22px","aria-label":"سجّل الصنف ده",onchange:e=>{l.on=e.target.checked;row.classList.toggle("off",!l.on);upd()}});
+      const info=el("small",{class:"muted"});
+      const showInfo=()=>{info.textContent=l.unitPrice&&l.unit?`${UNIT_TXT[l.unit]||""} بـ ${fmt2(l.unitPrice)} ج`:""};
+      const amt=moneyInput(l.amount,n=>{l.amount=n;if(l.unitPrice&&l.qtyUsed)l.unitPrice=Math.round(n/l.qtyUsed*100)/100;showInfo();upd()},{"aria-label":"السعر"});
+      if(l.unitPrice&&l.amount)l.qtyUsed=l.amount/l.unitPrice;
+      const sel=el("select",{"aria-label":"البند"},opts());sel.value=l.target;
+      const nw=el("div",{style:"grid-column:2 / -1;display:grid;grid-template-columns:minmax(0,1fr) 8rem;gap:6px",hidden:l.target!=="__new"});
+      const nn=el("input",{value:l.newName,placeholder:"اسم البند الجديد",oninput:e=>{l.newName=e.target.value;upd()}});
+      const ng=el("select",{"aria-label":"المجموعة"},m.groups.map(g=>el("option",{value:g.id,text:g.name})));ng.value=l.newGroup;ng.addEventListener("change",()=>{l.newGroup=ng.value});
+      nw.append(nn,ng);
+      sel.addEventListener("change",()=>{l.target=sel.value;if(l.target==="__new"&&!l.newName)nn.value=l.newName=l.name.slice(0,30);nw.hidden=l.target!=="__new";upd()});
+      row.append(cb,el("div",{class:"rn"},[l.name,el("br"),info]),amt,sel,nw);box.appendChild(row);showInfo();
+    });
+    sh.appendChild(box);
+    const anyPrice=lines.some(l=>l.unitPrice&&l.priceKey);
+    if(anyPrice)sh.appendChild(el("label",{style:"display:flex;gap:8px;align-items:flex-start;font-size:.88rem;padding:6px 0"},[el("input",{type:"checkbox",checked:true,style:"width:20px;height:20px",onchange:e=>{updPrices=e.target.checked}}),"حدّث أسعار السلع في التطبيق من الإيصال ده (سعر الكيلو واللتر)"]));
+    saveBtn.addEventListener("click",()=>{
+      const made={};
+      lines.filter(l=>l.on&&l.target==="__new").forEach(l=>{const key=l.newGroup+"|"+l.newName.trim();
+        if(!made[key]){const g=m.groups.find(x=>x.id===l.newGroup)||foodG;const ex=g.items.find(it=>it.name===l.newName.trim());
+          if(ex)made[key]=ex.id;else{const it={id:uid(),name:l.newName.trim(),type:guessType(l.name)==="water"?"":guessType(l.name),plan:0};g.items.push(it);all.push({it,g});made[key]=it.id}}
+        l.target=made[key]});
+      const groups={};lines.filter(l=>l.on&&l.target).forEach(l=>{(groups[l.target]=groups[l.target]||[]).push(l);const it=all.find(a=>a.it.id===l.target);if(it)map[normName(l.name)]=it.it.name});
+      const at=new Date().toISOString(),store=r.store||"إيصال";
+      Object.entries(groups).forEach(([id,ls])=>{const amount=Math.round(ls.reduce((a,l)=>a+l.amount,0)*100)/100;
+        const nm=ls.map(l=>l.name).filter(n=>n!==store);let note=nm.length?`${store}: `+nm.join("، "):store;if(note.length>140)note=note.slice(0,137)+"…";
+        m.entries.push({id:uid(),item:id,amount,note,at,receipt:true})});
+      let nP=0;
+      if(updPrices){const P=D.settings.prices,acc={};
+        lines.filter(l=>l.on&&l.unitPrice&&l.priceKey).forEach(l=>{const cur=P[l.priceKey]||0;if(cur&&(l.unitPrice<cur*.3||l.unitPrice>cur*3))return;(acc[l.priceKey]=acc[l.priceKey]||[]).push(l.unitPrice)});
+        Object.entries(acc).forEach(([k,v])=>{P[k]=Math.round(v.reduce((a,b)=>a+b,0)/v.length*100)/100;nP++});
+        if(nP){const d=new Date();D.settings.pricesNote=`آخر تحديث من إيصال ${store} ${d.getDate()}/${d.getMonth()+1}`}}
+      save();closeSheet();render();toast(`اتسجل الإيصال (${fmt(lines.filter(l=>l.on).reduce((a,l)=>a+l.amount,0))})${nP?` واتحدّث ${nP} سعر`:""}`);
+    });
+    sh.appendChild(el("div",{class:"rsum"},[el("div",{class:"row2"},[el("span",{text:"المجموع"}),sumEl]),chk,saveBtn]));
+    upd();
+  });
+}
+const fmt2=n=>(Math.round(n*100)/100).toLocaleString("en-US",{maximumFractionDigits:2});
+
 /* ================= AI (optional, needs the user's own API key) ================= */
 window.__httpCb={};
 window.__http=function(id,status,text){const f=window.__httpCb[id];delete window.__httpCb[id];if(f)f(status,text)};
@@ -558,9 +774,10 @@ function post(url,headers,body){return new Promise(res=>{
   if(Bridge&&Bridge.httpPost){const id=uid();window.__httpCb[id]=(s,t)=>res({status:s,text:t});Bridge.httpPost(url,JSON.stringify(headers),body,id)}
   else fetch(url,{method:"POST",headers,body}).then(async r=>res({status:r.status,text:await r.text()})).catch(e=>res({status:0,text:String(e)}));
 })}
-async function claude(prompt,useSearch){
+async function claude(prompt,useSearch,images){
   const key=D.settings.apiKey;if(!key)throw new Error("حط مفتاح الـAPI الأول");
-  const body={model:"claude-sonnet-5-5",max_tokens:2000,messages:[{role:"user",content:prompt}]};
+  const content=images&&images.length?images.map(d=>({type:"image",source:{type:"base64",media_type:"image/jpeg",data:d}})).concat([{type:"text",text:prompt}]):prompt;
+  const body={model:"claude-sonnet-5-5",max_tokens:4000,messages:[{role:"user",content}]};
   if(useSearch)body.tools=[{type:"web_search_20250305",name:"web_search",max_uses:6}];
   const r=await post("https://api.anthropic.com/v1/messages",{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},JSON.stringify(body));
   let j;try{j=JSON.parse(r.text)}catch(e){throw new Error("مفيش رد. اتأكد من النت")}
