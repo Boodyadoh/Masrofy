@@ -1,5 +1,5 @@
 // Offline cache for Masrofy. Bump VERSION when you change index.html so phones pick up the update.
-const VERSION = "masrofy-v7";
+const VERSION = "masrofy-v8";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

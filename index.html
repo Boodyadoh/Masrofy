@@ -493,7 +493,7 @@ function viewSettings(main){
     el("div",{class:"grid2"},[el("button",{text:Bridge?"حفظ نسخة في Downloads":"نزّل نسخة",onclick:()=>exportData(true)}),el("button",{text:"ابعت نسخة (شير)",onclick:()=>exportData(false)})]),
     el("button",{text:"استرجاع من نسخة",onclick:()=>file.click()}),file,
     el("button",{class:"danger",text:"امسح كل الداتا",onclick:()=>confirmSheet("تمسح كل الشهور والإعدادات؟ مش هينفع ترجعها.","امسح الكل",()=>{D=defaultData();ensureMonth(CUR);curKey=CUR;save();tab="month";render()})})]));
-  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.6 · كل حاجة على الموبايل"}));
+  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.7 · كل حاجة على الموبايل"}));
 }
 function load2(){const def=defaultData(),dp=def.settings.prices,sp=(D.settings&&D.settings.prices)||{};D.settings=Object.assign(def.settings,D.settings||{});D.settings.prices=Object.assign(dp,sp);D.family=D.family||[];D.goal=D.goal||def.goal;migrate();ensureMonth(CUR)}
 function exportData(toDownloads){
@@ -557,18 +557,18 @@ function entriesSheet(it){
 
 /* ================= receipts ================= */
 /* Two ways in: paste text copied with the phone's Live Text (free, on-device), or a photo read by Claude (needs API key). */
-const SKIP_RE=/(amount|المبلغ|مبلغ|sale|purchase|شراء|approved|موافق|tid|mid|rrn|auth|batch|terminal|ref|trace|expiry|aid|tvr|cardholder|merchant id|رقم التاجر|إجمالي|الاجمالي|الإجمالى|اجمالى|المجموع|total|subtotal|ضريبة|ضريبه|vat|tax|نقد|نقدي|كاش|cash|visa|فيزا|ماستر|card|بطاقة|الباقي|الباقى|change|المدفوع|paid|خصم|discount|رقم الفاتورة|فاتورة|invoice|tel|تليفون|هاتف|كاشير|cashier|التاريخ|date|الوقت|time|شكرا|thank)/i;
+const SKIP_RE=/(الصافي|الصافى|المدفوع|المتبقي|المتبقى|المبقي|مرتجع|دلفري|الدليفري|حماي|المستهلك|الوردية|البون|رقم|إسم الصنف|اسم الصنف|الكميه|الكمية|كميات|السعر \||amount|المبلغ|مبلغ|sale|purchase|شراء|approved|موافق|tid|mid|rrn|auth|batch|terminal|ref|trace|expiry|aid|tvr|cardholder|merchant id|رقم التاجر|إجمالي|الاجمالي|الإجمالى|اجمالى|المجموع|total|subtotal|ضريبة|ضريبه|vat|tax|نقد|نقدي|كاش|cash|visa|فيزا|ماستر|card|بطاقة|الباقي|الباقى|change|المدفوع|paid|خصم|discount|رقم الفاتورة|فاتورة|invoice|tel|تليفون|هاتف|كاشير|cashier|التاريخ|date|الوقت|time|شكرا|thank)/i;
 const TOTAL_RE=/(amount|المبلغ|مبلغ|sale|purchase|شراء|إجمالي|الاجمالي|الإجمالى|اجمالى|المجموع|total|الصافي|net)/i;
 /* item type from product name; first match wins */
 const KW=[
  ["drinks",/(بيبسي|بيبسى|كوكا|كولا|سفن|ميرندا|شويبس|سبرايت|فانتا|عصير|جهينة عصير|مياه غازية|صودا|ريد بول|pepsi|cola|juice|sprite|7up|fanta)/i],
  ["water",/(مياه|مياة|ماء|نستله|أكوافينا|اكوافينا|بركة|دساني|aquafina|water)/i],
  ["meat",/(لحم|لحمة|لحمه|كندوز|بتلو|ضاني|فراخ|دجاج|صدور|وراك|فرخة|كبدة|كبده|مفروم|سجق|برجر|بانيه|سمك|بلطي|جمبري|تونة|تونه|لانشون|بسطرمة|chicken|beef|meat|fish|tuna)/i],
- ["dairy",/(لبن|حليب|جبن|جبنة|جبنه|زبادي|زبادى|زبدة|زبده|قشطة|رايب|بيض|cheese|milk|yogurt|egg|butter)/i],
+ ["dairy",/(لبن|حليب|جبن|جبنة|جبنه|زبادي|زبادى|زبدة|زبده|قشطة|قشطه|كريمة|كريمه|كريه خفق|خفق|رايب|(^|\s)بيض|cheese|milk|yogurt|egg|butter|cream)/i],
  ["staples",/(رز|أرز|ارز|مكرونة|مكرونه|اسباجتي|سباجتي|شعرية|شعريه|فول|عدس|فاصوليا|لوبيا|حمص|دقيق|rice|pasta|flour)/i],
- ["pantry",/(زيت|سكر|عسل|شاي|شاى|قهوة|قهوه|نسكافيه|سمنة|سمنه|مربى|حلاوة|oil|sugar|honey|tea|coffee)/i],
+ ["pantry",/(زيت|سكر|عسل|شاي|شاى|تي |قهوة|قهوه|نسكافيه|نسكويك|كاكاو|ينسون|نعناع|كركديه|سمنة|سمنه|مربى|حلاوة|oil|sugar|honey|tea|coffee)/i],
  ["produce",/(طماطم|بطاطس|بصل|خيار|فلفل رومي|فلفل الوان|جزر|كوسة|كوسه|باذنجان|بتنجان|ثوم|ليمون|موز|تفاح|برتقال|يوسفي|عنب|فراولة|مانجو|بطيخ|كانتلوب|خضار|خضروات|فاكهة|فاكهه|خس|سبانخ|ملوخية|بقدونس|كزبرة|شبت|جرجير)/i],
- ["condiments",/(ملح|فلفل|كمون|بهارات|توابل|صوص|كاتشب|مايونيز|مايونيز|خل|مخلل|طحينة|طحينه|مستردة|كاري|بابريكا|شطة|ketchup|sauce|vinegar|mayo)/i],
+ ["condiments",/(حبهان|متبل|متبلة|ملح|فلفل|كمون|بهارات|توابل|صوص|كاتشب|مايونيز|مايونيز|خل|مخلل|طحينة|طحينه|مستردة|كاري|بابريكا|شطة|ketchup|sauce|vinegar|mayo)/i],
  ["bread",/(عيش|خبز|توست|فينو|بقسماط|كرواسون|bread|toast)/i],
  ["personal",/(معجون|فرشاة|فرشه|شامبو|شاور|صابون|بلسم|ديودورانت|مزيل عرق|حلاقة|شفرات|فوط|مناديل|كريم|لوشن|shampoo|soap|tooth|deo|tissue)/i],
  ["cleaning",/(فيري|فيرى|كلور|ديتول|منظف|مسحوق|بريل|برسيل|اريال|أريال|داوني|معطر|سفنج|اسفنج|جلاكس|مطهر|كلوركس|dettol|clorox|ariel|persil)/i]
@@ -590,7 +590,7 @@ const MERCH=[
 ];
 function merchantTarget(text,all){for(const[re,itemRe,suggest]of MERCH)if(re.test(text)){const x=all.find(a=>itemRe.test(a.it.name));return x?{id:x.it.id}:{suggest}}return null}
 /* which saved price a product updates, and its unit */
-const PK=[["eggs",/(بيض|egg)/i,"egg"],["beef",/(لحم|لحمة|لحمه|كندوز|بتلو|مفروم|بقري)/i,"kg"],["chicken",/(فراخ|دجاج|صدور|وراك|فرخة)/i,"kg"],
+const PK=[["eggs",/((^|\s)بيض|egg)/i,"egg"],["beef",/(لحم|لحمة|لحمه|كندوز|بتلو|مفروم|بقري)/i,"kg"],["chicken",/(فراخ|دجاج|صدور|وراك|فرخة)/i,"kg"],
  ["rice",/(رز|أرز|ارز|rice)/i,"kg"],["pasta",/(مكرونة|مكرونه|اسباجتي|pasta)/i,"kg"],["legumes",/(فول|عدس)/i,"kg"],["oil",/(زيت|oil)/i,"L"],
  ["sugar",/(سكر|sugar)/i,"kg"],["honey",/(عسل|honey)/i,"kg"],["tea",/(شاي|شاى|tea)/i,"kg"],["cheese",/(جبن|جبنة|جبنه|cheese)/i,"kg"],
  ["milk",/(^|\s)(لبن|حليب|milk)/i,"L"],["soda",/(بيبسي|كوكا|كولا|سفن|ميرندا|شويبس|سبرايت|pepsi|cola|sprite)/i,"L"]];
@@ -623,46 +623,88 @@ function enrich(l,all,map){
     if(q&&l.amount>0)l.unitPrice=Math.round(l.amount/q*100)/100}}
   else if(l.priceKey&&!l.unit){const p=PK.find(x=>x[0]===l.priceKey);if(p)l.unit=p[2]}
   if(!l.target){const mt=merchantTarget(l.name+" "+(l.store||""),all);if(mt){if(mt.id)l.target=mt.id;else{l.target="__new";l.newName=mt.suggest}}}
-  if(!l.target&&!l.newName){l.target="__new";l.newName=l.name.slice(0,30)}
+  if(!l.target&&/(ويفر|كيك|بسكويت|شيبسي|شيبس|شوكولا|حلويات|فيشار|سناك|مقرمشات|كرواسون|جيلي|آيس ?كريم|ايس ?كريم|wafer|cake|chips|choco)/i.test(l.name)){const x=all.find(a=>/سناكس|حلويات/.test(a.it.name));if(x)l.target=x.it.id;else{l.target="__new";l.newName="سناكس وحلويات"}}
+  if(!l.target&&!l.newName){l.target="__new";l.newName=l.many?"مشتريات متنوعة":l.name.slice(0,30)}
   return l;
 }
 /* text copied from a receipt photo (Live Text / Google Lens) -> lines */
+/* money looks like 34.00 / 75,00 / 2,200.0 */
+const MONEY_RE=/\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+[.,]\d{1,2}(?!\d)/g;
+const AR_RE=/[؀-ۿ]{2,}/,LAT_RE=/[A-Za-z]{2,}/;
+/* from the numbers on one line, work out the line total and count/weight */
+function lineMoney(ln){
+  ln=ln.replace(/(\d+\.\d{2})(\d+\.\d{2})/g,"$1 $2"); /* "0.05110.00" -> "0.05 110.00" */
+  const toks=ln.match(MONEY_RE)||[];if(!toks.length)return null;
+  const v=toks.map(numOf);
+  /* 1) a pair is equal → qty 1 */
+  for(let i=0;i<v.length;i++)for(let j=i+1;j<v.length;j++)if(v[i]>0&&Math.abs(v[i]-v[j])<.01)return{amount:v[j],count:1};
+  /* 2a) total column ends with the price but a stray digit was read in front ("119.00" → "4119.00") */
+  if(v.length===2){const a=toks[0].replace(/,/g,""),b=toks[1].replace(/,/g,"");
+    if(b.length>a.length&&b.endsWith(a)&&b.length-a.length<=2){const q=+b.slice(0,b.length-a.length);if(!(q>1&&Math.abs(q*v[0]-numOf(b.slice(b.length-a.length)))<.01))return{amount:v[0],count:1}}}
+  /* 2) scanned columns glued "qty"+"total", e.g. price 5.00 then "210.00" = 2 × 10.00 */
+  for(let i=0;i<toks.length;i++){const t=toks[i].replace(/,(?=\d{3})/g,"");for(let L=1;L<=2&&L<t.length-3;L++){const q=+t.slice(0,L),rest=numOf(t.slice(L));
+    if(!(q>=1&&q<=20&&rest>0))continue;for(let j=0;j<v.length;j++){if(j===i)continue;if(Math.abs(v[j]*q-rest)<=Math.max(.05,rest*.01))return{amount:rest,count:q}}}}
+  /* 3) qty × unit = total among three numbers (weighed items: 0.05 × 2,200 = 110) */
+  if(v.length>=3)for(let i=0;i<v.length;i++)for(let j=0;j<v.length;j++)for(let k=0;k<v.length;k++){if(i===j||j===k||i===k)continue;
+    if(v[k]>=v[j]&&v[i]>0&&Math.abs(v[i]*v[j]-v[k])<=Math.max(1,v[k]*.02)){const a=v[i];return Number.isInteger(a)&&a<50?{amount:v[k],count:a}:{amount:v[k],qty:a}}}
+  /* 4) "x" written explicitly */
+  const mx=ln.match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);const last=v[v.length-1];
+  /* two numbers that disagree: "price" and "1"+"total" glued; keep both, the receipt total decides later */
+  if(v.length===2&&v[0]>0&&v[0]<1)return{amount:last,qty:v[0]}; /* weighed item: 0.05 kg then the total */
+  if(v.length===2&&!mx){const t=toks[1].replace(/,/g,"");if(t.length>=5&&t[0]==="1"){const rest=numOf(t.slice(1));if(rest>0&&rest!==v[0])return{amount:rest,count:1,alts:[v[0],last]}}return{amount:last,count:1,alts:[v[0]]}}
+  if(mx){const a=numOf(mx[1]),b=numOf(mx[2]);if(Math.abs(a*b-last)<=Math.max(1,last*.02))return Number.isInteger(a)&&a<50?{amount:last,count:a}:{amount:last,qty:a}}
+  return{amount:last,count:1};
+}
+function cleanName(ln){
+  let n=ln.replace(MONEY_RE," ").replace(/(^|\s)[xX×*]+(?=\s|$)/g," ").replace(/(ج\.م|جنيه|egp|le)\b/gi," ").replace(/[|#*©®™"“”'‘’\[\]{}<>_=~^]+/g," ");
+  if(AR_RE.test(n))n=n.replace(/\b[A-Za-z]{1,7}\b/g," "); /* stray latin from scanning an arabic line */
+  n=n.replace(/\b\d{6,}\b/g," ").replace(/^[\s\d.,:;!-]+/,"").replace(/[\s\d.,:;!-]+$/,"").replace(/\s+/g," ").trim();
+  return n;
+}
+/* text from a receipt (scanned or pasted) -> store, total, items */
 function parseReceiptText(txt){
-  const raw=normDigits(String(txt).replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g," ")).split(/\r?\n/).map(s=>s.replace(/\s+/g," ").trim()).filter(Boolean);
-  const NUM=/\d+(?:[.,]\d+)*/g,LET=/[A-Za-z؀-ۿ]{2,}/;
+  let raw=normDigits(String(txt).replace(/[‎‏‪-‮⁦-⁩]/g," ")).split(/\r?\n/).map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s&&!/^[\W_]{1,4}$/.test(s));
+  raw=raw.filter(ln=>!/[*xX•#]{3,}\s*\d{2,4}/.test(ln)); /* masked card number */
   let total=0,store="";const items=[],names=[],prices=[];
-  raw.forEach((ln,i)=>{
-    if(/[*xX•#]{3,}\s*\d{2,4}/.test(ln))return; /* masked card number */
-    const nums=(ln.match(NUM)||[]).filter(n=>!/^\d{8,}$/.test(n.replace(/[.,]/g,"")));
-    const hasL=LET.test(ln);
-    /* text after the last number (e.g. "مياه 1.5 لتر") means that number is a size, not the price */
-    if(hasL&&nums.length){const last=nums[nums.length-1],tail=ln.slice(ln.lastIndexOf(last)+last.length);if(LET.test(tail)||/[A-Za-z\u0600-\u06FF]/.test(tail.trim())){nums.length=0}}
-    if(SKIP_RE.test(ln)){if(TOTAL_RE.test(ln)&&nums.length){const v=numOf(nums[nums.length-1]);if(v>total)total=v}return}
-    if(hasL&&!nums.length){if(BANK_RE.test(ln)&&!MERCH.some(m=>m[0].test(ln)))return;if(!store&&!items.length&&!names.length&&i<5){store=ln;return}names.push(ln);return}
-    if(!hasL&&nums.length){const v=numOf(nums[nums.length-1]);if(v>0&&v<100000)prices.push({v,ln});return}
-    if(hasL&&nums.length){
-      let price=numOf(nums[nums.length-1]);if(!(price>0&&price<100000))return;
-      let qty=null,count=1;const mx=ln.match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
-      if(mx){const a=numOf(mx[1]),b=numOf(mx[2]);if(Math.abs(a*b-price)<=Math.max(1,price*.02)){if(Number.isInteger(a)&&a<50)count=a;else qty=a}}
-      else if(nums.length>=3){/* scanned lines can lose their order: find qty × unit = total among the numbers */
-        const v=nums.map(numOf);let done=false;
-        for(let i=0;i<v.length&&!done;i++)for(let j=0;j<v.length&&!done;j++)for(let k=0;k<v.length&&!done;k++){if(i===j||j===k||i===k)continue;
-          if(v[k]>=v[i]&&v[k]>=v[j]&&v[i]*v[j]>0&&Math.abs(v[i]*v[j]-v[k])<=Math.max(1,v[k]*.02)){price=v[k];const a=Math.min(v[i],v[j]);if(Number.isInteger(a)&&a<50)count=a;else qty=a;done=true}}}
-      let name=ln.replace(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/gi," ").replace(/(ج\.م|جنيه|جم\.|egp|le)\b/gi," ");
-      const lastNum=nums[nums.length-1];const idx=name.lastIndexOf(lastNum);if(idx>=0)name=name.slice(0,idx)+name.slice(idx+lastNum.length);
-      name=name.replace(/\b\d{6,}\b/g," ").replace(/(^|\s)\d+[.,]\d{2,3}(?=\s|$)/g," ").replace(/(^|\s)[xX×*]+(?=\s|$)/g," ").replace(/[*#]+/g," ").replace(/\s+/g," ").trim();
-      items.push({name:name||"صنف",amount:price,qty,count});
-    }
-  });
-  /* Live Text sometimes reads names and prices as separate columns: pair them in order */
-  if(names.length>=2&&prices.length>=2){const n=Math.min(names.length,prices.length);
-    for(let i=0;i<n;i++){const ln=prices[i].ln;let qty=null,count=1;const mx=ln.match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
-      if(mx){const a=numOf(mx[1]),b=numOf(mx[2]);if(Number.isInteger(a)&&a<50)count=a;else qty=a}
-      items.push({name:names[i],amount:prices[i].v,qty,count})}}
-  /* a card slip has no items: one line with the shop name and the amount */
-  if(!items.length&&total>0)items.push({name:store||names[0]||"مشتريات",amount:total,slip:true});
+  let firstItem=-1;
+  const hasMoney=ln=>(ln.match(MONEY_RE)||[]).some(t=>numOf(t)>0);
+  const hasName=ln=>AR_RE.test(ln)||/[A-Za-z]{3,}/.test(ln.replace(MONEY_RE,""));
+  for(let i=0;i<raw.length;i++){
+    let ln=raw[i];
+    if(SKIP_RE.test(ln)){if(TOTAL_RE.test(ln)&&!/كميات|المدفوع|المتبقي|المبقي/.test(ln)){const t=(ln.match(MONEY_RE)||[]).map(numOf).filter(x=>x>0);if(t.length){const v=Math.max(...t);if(v>total)total=v}}continue}
+    if(BANK_RE.test(ln)&&!MERCH.some(m=>m[0].test(ln))&&!hasMoney(ln))continue;
+    let money=hasMoney(ln),named=hasName(ln);
+    /* a name on one line and its numbers on the next */
+    if(named&&!money&&i+1<raw.length&&hasMoney(raw[i+1])&&!AR_RE.test(raw[i+1])&&!SKIP_RE.test(raw[i+1])){ln=ln+" "+raw[i+1];i++;money=true}
+    else if(!named&&money&&i+1<raw.length&&AR_RE.test(raw[i+1])&&!hasMoney(raw[i+1])&&!SKIP_RE.test(raw[i+1])){ln=raw[i+1]+" "+ln;i++;named=true}
+    if(named&&!money){if(!store&&!items.length&&!names.length&&i<5){store=cleanName(ln)||ln;continue}names.push(ln);continue}
+    if(!named&&money){const lm=lineMoney(ln);if(lm&&lm.amount>0&&lm.amount<100000)prices.push(lm);continue}
+    if(named&&money){const lm=lineMoney(ln);if(!lm||!(lm.amount>0&&lm.amount<100000))continue;
+      /* a number followed by a unit word is a size ("مياه 1.5 لتر"), not a price */
+      const lastTok=(ln.match(MONEY_RE)||[]).pop(),tail=ln.slice(ln.lastIndexOf(lastTok)+lastTok.length);
+      if(/^\s*(لتر|ل|مل|كجم|كيلو|جم|جرام|ك|kg|g|ml|L)\b/i.test(tail)&&(ln.match(MONEY_RE)||[]).length===1){names.push(ln);continue}
+      if(firstItem<0)firstItem=i;items.push({name:cleanName(ln)||"صنف",amount:lm.amount,qty:lm.qty||null,count:lm.count||1,alts:lm.alts})}
+  }
+  /* leftovers: names and price lines read as separate columns, pair in order */
+  if(names.length&&prices.length){const n=Math.min(names.length,prices.length);for(let i=0;i<n;i++)items.push({name:cleanName(names[i])||"صنف",amount:prices[i].amount,qty:prices[i].qty||null,count:prices[i].count||1,alts:prices[i].alts})}
+  if(!items.length&&total>0)items.push({name:store||(names[0]&&cleanName(names[0]))||"مشتريات",amount:total,slip:true});
+  reconcile(items,total);
+  /* shop name: prefer a header line that looks like a shop */
+  const head=raw.slice(0,firstItem<0?6:Math.min(firstItem,8)).filter(l=>!SKIP_RE.test(l)&&!hasMoney(l)&&(AR_RE.test(l)||/[A-Za-z]{4,}/.test(l)));
+  const shop=head.find(l=>/(ماركت|ماركيت|market|سوبر|هايبر|hyper|mart|مول|كارفور|carrefour|صيدلي|pharma|كافيه|cafe|coffee|بنزين|petrol)/i.test(l));
+  if(shop)store=cleanName(shop)||store;else if(store&&!/[\u0600-\u06FF]{3,}|[A-Za-z]{4,}/.test(store)&&head.length)store=cleanName(head[0]);
   return{store,total,items};
 }
+/* if the items don't add up to the receipt total, try the other readings of doubtful lines until they do */
+function reconcile(items,total){
+  if(!(total>0))return;const sum=()=>items.reduce((a,l)=>a+l.amount,0);if(Math.abs(sum()-total)<=.5)return;
+  const amb=items.filter(l=>l.alts&&l.alts.length).slice(0,12);if(!amb.length)return;
+  const base=amb.map(l=>l.amount),opts=amb.map(l=>[l.amount].concat(l.alts.filter(a=>a!==l.amount)));
+  const rest=sum()-base.reduce((a,b)=>a+b,0);let best=null;
+  const go=(i,acc,pick)=>{if(best)return;if(i===amb.length){if(Math.abs(rest+acc-total)<=.5)best=pick.slice();return}for(const o of opts[i]){pick.push(o);go(i+1,acc+o,pick);pick.pop();if(best)return}};
+  go(0,0,[]);if(best)amb.forEach((l,i)=>{l.amount=best[i]});
+}
+window.__parseReceipt=parseReceiptText;
 function pasteSheet(){
   openSheet(sh=>{
     sh.appendChild(el("div",{class:"hd"},[el("h2",{text:"إيصال من نص منسوخ"}),el("button",{class:"ghost",text:"إلغاء",onclick:closeSheet})]));
@@ -684,17 +726,38 @@ async function getOcr(onP){
     await ocrWorker.setParameters({tessedit_pageseg_mode:"4",preserve_interword_spaces:"1"})}
   return ocrWorker;
 }
-/* grayscale + contrast stretch, about 1800px on the long side */
+/* find the paper (bright, low-colour area), crop it, enlarge so text is big enough, then adaptive black/white */
 function prepImage(file){return new Promise((res,rej)=>{
   const url=URL.createObjectURL(file),img=new Image();
-  img.onload=()=>{const max=1800,k=Math.min(2,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
-    const g=c.getContext("2d");g.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
-    const d=g.getImageData(0,0,c.width,c.height),a=d.data;let lo=255,hi=0;const gray=new Uint8ClampedArray(a.length/4);
-    for(let i=0,j=0;i<a.length;i+=4,j++){const y=a[i]*.299+a[i+1]*.587+a[i+2]*.114;gray[j]=y;if(j%7===0){if(y<lo)lo=y;if(y>hi)hi=y}}
-    const span=Math.max(40,hi-lo);for(let i=0,j=0;i<a.length;i+=4,j++){let y=(gray[j]-lo)*255/span;y=y>200?255:y<60?0:y;a[i]=a[i+1]=a[i+2]=y}
-    g.putImageData(d,0,0);res(c)};
+  img.onload=()=>{try{URL.revokeObjectURL(url);res(prepCanvas(img))}catch(e){rej(e)}};
   img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("مش قادر أفتح الصورة"))};img.src=url;
 })}
+function prepCanvas(img){
+  /* 1) small copy to find the paper */
+  const sw=Math.min(400,img.width),sk=sw/img.width,sh=Math.round(img.height*sk);
+  const sc=document.createElement("canvas");sc.width=sw;sc.height=sh;const sg=sc.getContext("2d",{willReadFrequently:true});sg.drawImage(img,0,0,sw,sh);
+  const sd=sg.getImageData(0,0,sw,sh).data;const col=new Float32Array(sw),row=new Float32Array(sh);
+  for(let y=0;y<sh;y++)for(let x=0;x<sw;x++){const i=(y*sw+x)*4,r=sd[i],g=sd[i+1],b=sd[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+    if(mx>140&&mx-mn<45){col[x]++;row[y]++}}
+  const span=(arr,len,other)=>{let a=0,b=len-1;const th=other*.35;while(a<len&&arr[a]<th)a++;while(b>a&&arr[b]<th)b--;return[a,b]};
+  let[x0,x1]=span(col,sw,sh),[y0,y1]=span(row,sh,sw*.25);
+  if(x1-x0<sw*.15||y1-y0<sh*.15){x0=0;x1=sw-1;y0=0;y1=sh-1}
+  const pad=4;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(sw-1,x1+pad);y1=Math.min(sh-1,y1+pad);
+  const cx=x0/sk,cy=y0/sk,cw=(x1-x0+1)/sk,ch=(y1-y0+1)/sk;
+  /* 2) enlarge the paper to ~1600px wide (cap total pixels for the phone) */
+  let k=1600/cw;if(cw*k*ch*k>16e6)k=Math.sqrt(16e6/(cw*ch));
+  const W=Math.round(cw*k),H=Math.round(ch*k);const c=document.createElement("canvas");c.width=W;c.height=H;
+  const g=c.getContext("2d",{willReadFrequently:true});g.imageSmoothingQuality="high";g.drawImage(img,cx,cy,cw,ch,0,0,W,H);
+  /* 3) adaptive threshold with an integral image (local mean over 41px, minus 15) */
+  const d=g.getImageData(0,0,W,H),a=d.data,n=W*H,gray=new Uint8Array(n),I=new Float64Array((W+1)*(H+1));
+  for(let i=0,j=0;j<n;i+=4,j++)gray[j]=(a[i]*299+a[i+1]*587+a[i+2]*114)/1000;
+  for(let y=0;y<H;y++){let s=0;for(let x=0;x<W;x++){s+=gray[y*W+x];I[(y+1)*(W+1)+x+1]=I[y*(W+1)+x+1]+s}}
+  const R=20,C=15;
+  for(let y=0;y<H;y++){const ya=Math.max(0,y-R),yb=Math.min(H,y+R+1);for(let x=0;x<W;x++){const xa=Math.max(0,x-R),xb=Math.min(W,x+R+1);
+    const sum=I[yb*(W+1)+xb]-I[ya*(W+1)+xb]-I[yb*(W+1)+xa]+I[ya*(W+1)+xa],m=sum/((yb-ya)*(xb-xa));const v=gray[y*W+x]>m-C?255:0,i=(y*W+x)*4;a[i]=a[i+1]=a[i+2]=v}}
+  g.putImageData(d,0,0);return c;
+}
+window.__prepCanvas=prepCanvas;
 function pickPhoto(){
   const inp=el("input",{type:"file",accept:"image/*",style:"display:none"});
   inp.addEventListener("change",()=>{const f=inp.files[0];inp.remove();if(f)readReceiptOnPhone(f)});
@@ -768,7 +831,7 @@ function receiptSheet(r){
   const map=D.settings.receiptMap||(D.settings.receiptMap={});
   const foodG=m.groups.find(g=>g.name==="الأكل")||m.groups[0];
   const lines=r.items.map(x=>{const l=Object.assign({name:"صنف",amount:0,qty:null,count:1,unit:"",unitPrice:null,priceKey:"",target:"",newName:"",newGroup:""},x);
-    l.name=String(l.name||"صنف");l.amount=Math.round((+l.amount||0)*100)/100;l.store=r.items.length===1?(r.store||""):"";
+    l.name=String(l.name||"صنف");l.amount=Math.round((+l.amount||0)*100)/100;l.many=r.items.length>=3;l.store=r.items.length===1?(r.store||""):"";
     if(l.target&&l.target!=="__new"&&!all.some(a=>a.it.id===l.target))l.target="";
     if(l.newName&&!l.target)l.target="__new";
     enrich(l,all,map);if(!l.newGroup&&l.newName){const sg={"مواصلات":/عربي/,"صيدلية":/طوارئ/,"صيانة العربية":/عربي/,"سوبر ماركت":/الأكل/}[l.newName];const g=sg&&m.groups.find(g=>sg.test(g.name));if(g)l.newGroup=g.id}if(!l.newGroup){const t=guessType(l.name);l.newGroup=(t&&t!=="water"?foodG:(m.groups.find(g=>/خروج/.test(g.name))&&false)||foodG).id}
