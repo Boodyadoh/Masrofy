@@ -493,7 +493,7 @@ function viewSettings(main){
     el("div",{class:"grid2"},[el("button",{text:Bridge?"حفظ نسخة في Downloads":"نزّل نسخة",onclick:()=>exportData(true)}),el("button",{text:"ابعت نسخة (شير)",onclick:()=>exportData(false)})]),
     el("button",{text:"استرجاع من نسخة",onclick:()=>file.click()}),file,
     el("button",{class:"danger",text:"امسح كل الداتا",onclick:()=>confirmSheet("تمسح كل الشهور والإعدادات؟ مش هينفع ترجعها.","امسح الكل",()=>{D=defaultData();ensureMonth(CUR);curKey=CUR;save();tab="month";render()})})]));
-  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.7 · كل حاجة على الموبايل"}));
+  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.8 · كل حاجة على الموبايل"}));
 }
 function load2(){const def=defaultData(),dp=def.settings.prices,sp=(D.settings&&D.settings.prices)||{};D.settings=Object.assign(def.settings,D.settings||{});D.settings.prices=Object.assign(dp,sp);D.family=D.family||[];D.goal=D.goal||def.goal;migrate();ensureMonth(CUR)}
 function exportData(toDownloads){
@@ -631,9 +631,16 @@ function enrich(l,all,map){
 /* money looks like 34.00 / 75,00 / 2,200.0 */
 const MONEY_RE=/\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+[.,]\d{1,2}(?!\d)/g;
 const AR_RE=/[؀-ۿ]{2,}/,LAT_RE=/[A-Za-z]{2,}/;
+/* repair numbers the scanner glued together or lost the point in */
+function fixNums(ln){
+  ln=ln.replace(/(\d+\.\d{2})(\d+\.\d{2})/g,"$1 $2").replace(/(\d+\.\d{2})(\d{3,})(?=\s|$)/g,"$1 $2"); /* "0.05110.00" / "0.0511000" -> two numbers */
+  const has=/\d+[.,]\d{1,2}(?!\d)/.test(ln);
+  if(has)ln=ln.replace(/(^|[\s+])(\d{1,5})00(?=\s|$)/g,(m,a,b)=>a+b+".00"); /* "22900" next to "14.50" is 229.00 */
+  return ln;
+}
 /* from the numbers on one line, work out the line total and count/weight */
 function lineMoney(ln){
-  ln=ln.replace(/(\d+\.\d{2})(\d+\.\d{2})/g,"$1 $2"); /* "0.05110.00" -> "0.05 110.00" */
+  ln=fixNums(ln);
   const toks=ln.match(MONEY_RE)||[];if(!toks.length)return null;
   const v=toks.map(numOf);
   /* 1) a pair is equal → qty 1 */
@@ -656,21 +663,24 @@ function lineMoney(ln){
   return{amount:last,count:1};
 }
 function cleanName(ln){
-  let n=ln.replace(MONEY_RE," ").replace(/(^|\s)[xX×*]+(?=\s|$)/g," ").replace(/(ج\.م|جنيه|egp|le)\b/gi," ").replace(/[|#*©®™"“”'‘’\[\]{}<>_=~^]+/g," ");
+  let n=ln.replace(MONEY_RE,(m,off,str)=>/^\s*(لتر|ل(?=\s|$)|مل|كجم|كيلو|جم|جرام|ك(?=\s|$)|kg|g(?=\s|$)|ml|L(?=\s|$))/i.test(str.slice(off+m.length))?m:" ").replace(/(^|\s)[xX×*]+(?=\s|$)/g," ").replace(/(ج\.م|جنيه|egp|le)\b/gi," ").replace(/[|#*©®™"“”'‘’\[\]{}<>_=~^]+/g," ");
   if(AR_RE.test(n))n=n.replace(/\b[A-Za-z]{1,7}\b/g," "); /* stray latin from scanning an arabic line */
-  n=n.replace(/\b\d{6,}\b/g," ").replace(/^[\s\d.,:;!-]+/,"").replace(/[\s\d.,:;!-]+$/,"").replace(/\s+/g," ").trim();
+  n=n.replace(/\b\d{6,}\b/g," ").replace(/(^|\s)0[\d.]*(?=\s|$)/g," ").replace(/(^|\s)[.¥£$€+]+(?=\s|$)/g," ").replace(/^[\s\d.,:;!-]+/,"").replace(/[\s\d.,:;!-]+$/,"").replace(/\s+/g," ").trim();
   return n;
 }
 /* text from a receipt (scanned or pasted) -> store, total, items */
 function parseReceiptText(txt){
   let raw=normDigits(String(txt).replace(/[‎‏‪-‮⁦-⁩]/g," ")).split(/\r?\n/).map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s&&!/^[\W_]{1,4}$/.test(s));
-  raw=raw.filter(ln=>!/[*xX•#]{3,}\s*\d{2,4}/.test(ln)); /* masked card number */
+  raw=raw.filter(ln=>!/[*xX•#]{3,}\s*\d{2,4}/.test(ln)).map(fixNums); /* drop masked card numbers */
   let total=0,store="";const items=[],names=[],prices=[];
   let firstItem=-1;
   const hasMoney=ln=>(ln.match(MONEY_RE)||[]).some(t=>numOf(t)>0);
   const hasName=ln=>AR_RE.test(ln)||/[A-Za-z]{3,}/.test(ln.replace(MONEY_RE,""));
+  let ended=false;
   for(let i=0;i<raw.length;i++){
     let ln=raw[i];
+    if(ended){if(TOTAL_RE.test(ln)&&!/كميات|المدفوع|المتبقي|المبقي/.test(ln)){const t=(ln.match(MONEY_RE)||[]).map(numOf).filter(x=>x>0);if(t.length){const v=Math.max(...t);if(v>total)total=v}}continue}
+    if(items.length&&/(إجمالي|اجمالي|الإجمالي|الاجمالي|الصافي|الصافى|المجموع|total|subtotal|كميات)/i.test(ln)){ended=true;i--;continue}
     if(SKIP_RE.test(ln)){if(TOTAL_RE.test(ln)&&!/كميات|المدفوع|المتبقي|المبقي/.test(ln)){const t=(ln.match(MONEY_RE)||[]).map(numOf).filter(x=>x>0);if(t.length){const v=Math.max(...t);if(v>total)total=v}}continue}
     if(BANK_RE.test(ln)&&!MERCH.some(m=>m[0].test(ln))&&!hasMoney(ln))continue;
     let money=hasMoney(ln),named=hasName(ln);
