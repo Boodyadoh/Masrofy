@@ -227,7 +227,7 @@ const ageGroup=a=>a<1?"infant":a<4?"toddler":a<13?"child":a<18?"teen":"adult";
 const NOW=new Date(),CUR=mkey(NOW);
 function defaultData(){
   const prices={};PRICE_DEFS.forEach(([k,,p])=>prices[k]=p);
-  return{version:1,schema:2,settings:{spendLimitPct:80,level:"mid",theme:"auto",apiKey:"",prices,pricesNote:"أسعار نوفمبر 2026"},
+  return{version:1,schema:2,settings:{spendLimitPct:80,level:"mid",theme:"auto",apiKey:"",aiProvider:"openai",openaiKey:"",openaiModel:"gpt-6-luna",prices,pricesNote:"أسعار نوفمبر 2026"},
     family:[],goal:{name:"صندوق طوارئ",amount:0},months:{}};
 }
 function G(name,items){return{id:uid(),name,items:items.map(([n,t])=>({id:uid(),name:n,type:t||"",plan:0}))}}
@@ -484,13 +484,7 @@ function viewSettings(main){
     el("div",{style:"display:flex;align-items:center;gap:8px"},[el("input",{type:"range",min:"40",max:"100",step:"5",value:S.spendLimitPct,style:"padding:0;background:none;border:0;accent-color:var(--accent)",oninput:e=>{S.spendLimitPct=+e.target.value;e.target.nextSibling.textContent=S.spendLimitPct+"%";save()}}),el("b",{class:"num",style:"width:3.5rem",text:S.spendLimitPct+"%"})])]));
   const pr=el("div",{class:"prices"});
   PRICE_DEFS.forEach(([k,t])=>{pr.appendChild(el("span",{text:t}));pr.appendChild(moneyInput(S.prices[k],n=>{S.prices[k]=n;save()}))});
-  main.appendChild(el("section",{class:"card"},[el("h2",{text:"أسعار السلع"}),el("small",{class:"muted",text:S.pricesNote+". عدّلها لما الأسعار تتغير، أو حدّثها بالذكاء الاصطناعي تحت."}),pr]));
-  /* AI */
-  const out=el("div",{class:"ai-out",hidden:true});
-  const keyIn=el("input",{type:"password",value:S.apiKey,placeholder:"sk-ant-…",autocomplete:"off",onchange:e=>{S.apiKey=e.target.value.trim();save()}});
-  main.appendChild(el("section",{class:"card"},[el("h2",{text:"الذكاء الاصطناعي (اختياري)"}),
-    el("small",{class:"muted",text:"حط مفتاح Claude API بتاعك، وهو بيتحفظ على الموبايل بس. بيستخدم للبحث عن الأسعار ومراجعة ميزانيتك."}),keyIn,
-    el("div",{class:"grid2"},[el("button",{text:"حدّث الأسعار من النت",onclick:()=>aiPrices(out)}),el("button",{text:"راجع ميزانيتي",onclick:()=>aiReview(out)})]),out]));
+  main.appendChild(el("section",{class:"card"},[el("h2",{text:"أسعار السلع"}),el("small",{class:"muted",text:S.pricesNote+". بتتحدث لوحدها من الإيصالات اللي بتسجلها، وتقدر تعدّلها بإيدك."}),pr]));
   /* theme */
   main.appendChild(el("section",{class:"card"},[el("h2",{text:"الشكل"}),el("div",{class:"seg"},[["auto","تلقائي"],["light","فاتح"],["dark","غامق"]].map(([k,t])=>el("button",{"aria-pressed":S.theme===k?"true":"false",text:t,onclick:()=>{S.theme=k;save();render()}})))]));
   /* data */
@@ -499,7 +493,7 @@ function viewSettings(main){
     el("div",{class:"grid2"},[el("button",{text:Bridge?"حفظ نسخة في Downloads":"نزّل نسخة",onclick:()=>exportData(true)}),el("button",{text:"ابعت نسخة (شير)",onclick:()=>exportData(false)})]),
     el("button",{text:"استرجاع من نسخة",onclick:()=>file.click()}),file,
     el("button",{class:"danger",text:"امسح كل الداتا",onclick:()=>confirmSheet("تمسح كل الشهور والإعدادات؟ مش هينفع ترجعها.","امسح الكل",()=>{D=defaultData();ensureMonth(CUR);curKey=CUR;save();tab="month";render()})})]));
-  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.4"}));
+  main.appendChild(el("p",{class:"muted",style:"text-align:center;font-size:.75rem",text:"مصروفي 1.6 · كل حاجة على الموبايل"}));
 }
 function load2(){const def=defaultData(),dp=def.settings.prices,sp=(D.settings&&D.settings.prices)||{};D.settings=Object.assign(def.settings,D.settings||{});D.settings.prices=Object.assign(dp,sp);D.family=D.family||[];D.goal=D.goal||def.goal;migrate();ensureMonth(CUR)}
 function exportData(toDownloads){
@@ -529,7 +523,7 @@ function addSheet(itemId){
   const m=M();let expr="",sel=itemId||null;
   openSheet(sh=>{
     sh.appendChild(el("div",{class:"hd"},[el("h2",{text:"مصروف جديد"}),el("button",{class:"ghost",text:"إلغاء",onclick:closeSheet})]));
-    sh.appendChild(el("div",{class:"grid2"},[el("button",{class:"scan",onclick:()=>{closeSheet();pasteSheet()}},["📋 الصق نص الإيصال"]),el("button",{class:"scan",onclick:()=>{closeSheet();pickReceipt()}},["📷 صوّر الإيصال"])]));
+    sh.appendChild(el("button",{class:"scan",onclick:()=>{closeSheet();pickPhoto()}},["📷 صوّر الإيصال"]));
     sh.appendChild(el("small",{class:"muted",style:"text-align:center",text:"مفيش إيصال؟ سجّل المصروف بإيدك هنا:"}));
     const ex=el("div",{class:"expr"}),rs=el("div",{class:"res num",text:"0"});
     sh.appendChild(el("div",{class:"display"},[ex,rs]));
@@ -634,7 +628,7 @@ function enrich(l,all,map){
 }
 /* text copied from a receipt photo (Live Text / Google Lens) -> lines */
 function parseReceiptText(txt){
-  const raw=normDigits(txt).split(/\r?\n/).map(s=>s.replace(/\s+/g," ").trim()).filter(Boolean);
+  const raw=normDigits(String(txt).replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g," ")).split(/\r?\n/).map(s=>s.replace(/\s+/g," ").trim()).filter(Boolean);
   const NUM=/\d+(?:[.,]\d+)*/g,LET=/[A-Za-z؀-ۿ]{2,}/;
   let total=0,store="";const items=[],names=[],prices=[];
   raw.forEach((ln,i)=>{
@@ -647,12 +641,16 @@ function parseReceiptText(txt){
     if(hasL&&!nums.length){if(BANK_RE.test(ln)&&!MERCH.some(m=>m[0].test(ln)))return;if(!store&&!items.length&&!names.length&&i<5){store=ln;return}names.push(ln);return}
     if(!hasL&&nums.length){const v=numOf(nums[nums.length-1]);if(v>0&&v<100000)prices.push({v,ln});return}
     if(hasL&&nums.length){
-      const price=numOf(nums[nums.length-1]);if(!(price>0&&price<100000))return;
+      let price=numOf(nums[nums.length-1]);if(!(price>0&&price<100000))return;
       let qty=null,count=1;const mx=ln.match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
       if(mx){const a=numOf(mx[1]),b=numOf(mx[2]);if(Math.abs(a*b-price)<=Math.max(1,price*.02)){if(Number.isInteger(a)&&a<50)count=a;else qty=a}}
+      else if(nums.length>=3){/* scanned lines can lose their order: find qty × unit = total among the numbers */
+        const v=nums.map(numOf);let done=false;
+        for(let i=0;i<v.length&&!done;i++)for(let j=0;j<v.length&&!done;j++)for(let k=0;k<v.length&&!done;k++){if(i===j||j===k||i===k)continue;
+          if(v[k]>=v[i]&&v[k]>=v[j]&&v[i]*v[j]>0&&Math.abs(v[i]*v[j]-v[k])<=Math.max(1,v[k]*.02)){price=v[k];const a=Math.min(v[i],v[j]);if(Number.isInteger(a)&&a<50)count=a;else qty=a;done=true}}}
       let name=ln.replace(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/gi," ").replace(/(ج\.م|جنيه|جم\.|egp|le)\b/gi," ");
       const lastNum=nums[nums.length-1];const idx=name.lastIndexOf(lastNum);if(idx>=0)name=name.slice(0,idx)+name.slice(idx+lastNum.length);
-      name=name.replace(/\b\d{6,}\b/g," ").replace(/\s+/g," ").trim();
+      name=name.replace(/\b\d{6,}\b/g," ").replace(/(^|\s)\d+[.,]\d{2,3}(?=\s|$)/g," ").replace(/(^|\s)[xX×*]+(?=\s|$)/g," ").replace(/[*#]+/g," ").replace(/\s+/g," ").trim();
       items.push({name:name||"صنف",amount:price,qty,count});
     }
   });
@@ -668,14 +666,68 @@ function parseReceiptText(txt){
 function pasteSheet(){
   openSheet(sh=>{
     sh.appendChild(el("div",{class:"hd"},[el("h2",{text:"إيصال من نص منسوخ"}),el("button",{class:"ghost",text:"إلغاء",onclick:closeSheet})]));
-    sh.appendChild(el("div",{class:"alert",style:"white-space:pre-line;font-size:.85rem",text:"على الآيفون: افتح صورة الإيصال من الصور، دوس على زرار النص (Live Text) تحت يمين الصورة، وبعدين «Copy All» أو حدد الكلام كله وانسخه.\nعلى الأندرويد: من Google Lens اختار Text ثم Copy.\nبعدها الصق هنا."}));
+    sh.appendChild(el("div",{class:"alert",style:"white-space:pre-line;font-size:.85rem",text:"طريقتين:\n① ChatGPT (باشتراكك): دوس «انسخ الطلب لـChatGPT»، افتح تطبيق ChatGPT، ارفق صورة الإيصال والصق الطلب وابعت. انسخ رده كله وارجع الصقه هنا.\n② ببلاش من غير نت: افتح صورة الإيصال من الصور، دوس زرار النص (Live Text) واختار Copy All، والصقه هنا."}));
+    sh.appendChild(el("button",{class:"scan",onclick:async e=>{const t=receiptPrompt(M());try{await navigator.clipboard.writeText(t);toast("اتنسخ، افتح ChatGPT والصقه مع الصورة")}catch(x){ta.value=t;ta.select();toast("حدد النص اللي ظهر وانسخه")}}},["📋 انسخ الطلب لـChatGPT"]));
     const ta=el("textarea",{rows:"8",placeholder:"الصق نص الإيصال هنا",style:"direction:rtl"});sh.appendChild(ta);
     const msg=el("small",{class:"muted"});sh.appendChild(msg);
-    sh.appendChild(el("button",{class:"primary",text:"اقرا الإيصال",onclick:()=>{const r=parseReceiptText(ta.value);if(!r.items.length){msg.textContent="ما لقيتش أصناف بأسعار. اتأكد إنك نسخت النص كله، أو سجّل بإيدك.";msg.style.color="var(--danger)";return}closeSheet();receiptSheet(r)}}));
+    sh.appendChild(el("button",{class:"primary",text:"اقرا الإيصال",onclick:()=>{let r=null;const jm=ta.value.match(/\{[\s\S]*"items"[\s\S]*\}/);
+      if(jm){try{const j=JSON.parse(jm[0]);if(Array.isArray(j.items)&&j.items.length){j.items=aiItems(j,M());r=j}}catch(x){}}
+      if(!r)r=parseReceiptText(ta.value);if(!r.items.length){msg.textContent="ما لقيتش أصناف بأسعار. اتأكد إنك نسخت النص كله، أو سجّل بإيدك.";msg.style.color="var(--danger)";return}closeSheet();receiptSheet(r)}}));
+  });
+}
+/* on-phone text recognition (Tesseract, free). Downloads the reader once, then works offline. */
+let ocrWorker=null;
+function loadScript(src){return new Promise((res,rej)=>{if(window.Tesseract)return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("محتاج نت أول مرة عشان ينزل أداة القراية"));document.head.appendChild(sc)})}
+async function getOcr(onP){
+  await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+  if(!ocrWorker){ocrWorker=await Tesseract.createWorker("ara+eng",1,{logger:m=>{if(onP&&m.status)onP(m)}});
+    await ocrWorker.setParameters({tessedit_pageseg_mode:"4",preserve_interword_spaces:"1"})}
+  return ocrWorker;
+}
+/* grayscale + contrast stretch, about 1800px on the long side */
+function prepImage(file){return new Promise((res,rej)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{const max=1800,k=Math.min(2,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+    const g=c.getContext("2d");g.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+    const d=g.getImageData(0,0,c.width,c.height),a=d.data;let lo=255,hi=0;const gray=new Uint8ClampedArray(a.length/4);
+    for(let i=0,j=0;i<a.length;i+=4,j++){const y=a[i]*.299+a[i+1]*.587+a[i+2]*.114;gray[j]=y;if(j%7===0){if(y<lo)lo=y;if(y>hi)hi=y}}
+    const span=Math.max(40,hi-lo);for(let i=0,j=0;i<a.length;i+=4,j++){let y=(gray[j]-lo)*255/span;y=y>200?255:y<60?0:y;a[i]=a[i+1]=a[i+2]=y}
+    g.putImageData(d,0,0);res(c)};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("مش قادر أفتح الصورة"))};img.src=url;
+})}
+function pickPhoto(){
+  const inp=el("input",{type:"file",accept:"image/*",style:"display:none"});
+  inp.addEventListener("change",()=>{const f=inp.files[0];inp.remove();if(f)readReceiptOnPhone(f)});
+  document.body.appendChild(inp);inp.click();
+}
+async function readReceiptOnPhone(file){
+  let status,bar;
+  openSheet(sh=>{sh.appendChild(el("h2",{text:"بيقرا الإيصال على الموبايل…"}));status=el("p",{class:"muted",text:"بيجهز الصورة"});
+    bar=el("i",{style:"width:5%;background:var(--accent)"});sh.appendChild(status);sh.appendChild(el("div",{class:"meter"},[bar]))});
+  try{
+    const img=await prepImage(file);
+    const w=await getOcr(m=>{const p=Math.round((m.progress||0)*100);
+      status.textContent=m.status==="recognizing text"?`بيقرا… ${p}%`:/load|download|initializ/i.test(m.status)?"أول مرة بس: بينزّل أداة القراية (محتاج نت)…":"بيجهز…";
+      if(m.status==="recognizing text")bar.style.width=Math.max(5,p)+"%"});
+    status.textContent="بيقرا…";
+    const {data}=await w.recognize(img);
+    const r=parseReceiptText(data.text||"");closeSheet();
+    if(r.items.length)receiptSheet(r);else fixTextSheet(data.text||"");
+  }catch(e){status.textContent=(e&&e.message)||"حصلت مشكلة في القراية";status.style.color="var(--danger)"}
+}
+/* when nothing usable was read: show what was read so the user can fix numbers, or give up and type it */
+function fixTextSheet(text){
+  openSheet(sh=>{
+    sh.appendChild(el("div",{class:"hd"},[el("h2",{text:"ما قدرتش أفهم الإيصال كويس"}),el("button",{class:"ghost",text:"إلغاء",onclick:closeSheet})]));
+    sh.appendChild(el("small",{class:"muted",text:"ده اللي اتقرا من الصورة. صلّح اسم الصنف وسعره في آخر السطر لو تقدر، أو صوّره تاني في نور أحسن ومن غير ميل، أو سجّل بإيدك."}));
+    const ta=el("textarea",{rows:"9",style:"direction:rtl",value:text});sh.appendChild(ta);
+    const msg=el("small",{class:"muted"});sh.appendChild(msg);
+    sh.appendChild(el("div",{class:"grid2"},[el("button",{text:"سجّل بإيدك",onclick:()=>{closeSheet();addSheet(null)}}),
+      el("button",{class:"primary",text:"اقرا تاني",onclick:()=>{const r=parseReceiptText(ta.value);if(!r.items.length){msg.textContent="لسه مش لاقي أصناف بأسعار.";msg.style.color="var(--danger)";return}closeSheet();receiptSheet(r)}})]));
   });
 }
 function pickReceipt(){
-  if(!D.settings.apiKey){openSheet(sh=>{sh.appendChild(el("h2",{text:"محتاج مفتاح Claude API"}));sh.appendChild(el("p",{class:"muted",text:"قراءة الصورة مباشرة بتستخدم Claude. حط المفتاح من الإعدادات > الذكاء الاصطناعي، أو استخدم «الصق نص الإيصال» وهو ببلاش."}));
+  if(!hasAIKey()){openSheet(sh=>{sh.appendChild(el("h2",{text:useOpenAI()?"محتاج مفتاح OpenAI API":"محتاج مفتاح Claude API"}));sh.appendChild(el("p",{class:"muted",text:"قراءة الصورة من جوه التطبيق محتاجة مفتاح API من الإعدادات > الذكاء الاصطناعي. لو عايز تستخدم اشتراك ChatGPT بتاعك من غير مفتاح، اختار «الصق نص الإيصال» وبعدين «انسخ الطلب لـChatGPT»."}));
     sh.appendChild(el("div",{class:"grid2"},[el("button",{text:"الصق نص الإيصال",onclick:()=>{closeSheet();pasteSheet()}}),el("button",{class:"primary",text:"روح للإعدادات",onclick:()=>{closeSheet();tab="settings";render()}})]))});return}
   const inp=el("input",{type:"file",accept:"image/*",style:"display:none"});
   inp.addEventListener("change",()=>{const fs=[...inp.files];inp.remove();if(fs.length)scanReceipt(fs)});
@@ -693,17 +745,24 @@ async function scanReceipt(files){
   openSheet(sh=>{sh.appendChild(el("h2",{text:"بيقرا الإيصال…"}));status=el("p",{class:"muted",text:"بيصغّر الصورة ويبعتها. ممكن ياخد نص دقيقة."});sh.appendChild(status)});
   try{
     const imgs=[];for(const f of files)imgs.push(await shrink(f));
-    const items=[];m.groups.forEach(g=>g.items.forEach(it=>items.push(`${it.id} = ${g.name} / ${it.name}`)));
-    const keys=PK.map(p=>p[0]).join("، ");
-    const prompt=`دي صورة إيصال شراء من مصر (ممكن تكون أكتر من صورة لنفس الإيصال). استخرج كل صنف اتشرى بسعره النهائي بعد أي خصم.\n\nوزّع كل صنف على أنسب بند من بنود ميزانيتي دي (اكتب الـid بالظبط):\n${items.join("\n")}\n\nلو مفيش بند مناسب خلي target فاضي واقترح اسم بند جديد قصير في new_item واسم المجموعة اللي يتحط فيها من أسماء المجموعات اللي فوق في new_group.\nلو الصنف بيتباع بالوزن أو الحجم أو العدد، حط الكمية الإجمالية في qty ووحدتها في unit (kg أو L أو egg) وسعر الوحدة في unit_price. مثال: 3 كيلو لحمة بـ 300 → qty 3، unit kg، unit_price 100. وحط في price_key واحد من دول لو الصنف منهم: ${keys}، أو سيبه فاضي.\nلو ده إيصال فيزا أو ماكينة دفع من البنك ومفيهوش أصناف، رجّع صنف واحد اسمه اسم التاجر بالمبلغ، واختار البند حسب نوع المكان (بنزينة → بنزين، كافيه → كافيه، مطعم → مطاعم ودليفري، صيدلية، محل لبس، إلخ).\nتجاهل سطور الإجمالي والضريبة والفكة وطريقة الدفع، بس لو فيه رسوم خدمة أو توصيل حطها كصنف. لو فيه خصم على الفاتورة كلها وزّعه على الأصناف بالنسبة.\n\nرد بـ JSON بس من غير أي كلام تاني بالشكل ده:\n{"store":"اسم المحل","date":"YYYY-MM-DD","total":0,"items":[{"name":"اسم الصنف زي ما هو مكتوب","amount":0,"qty":0,"unit":"","unit_price":0,"price_key":"","target":"id","new_item":"","new_group":""}]}`;
-    const txt=await claude(prompt,false,imgs);
+    const prompt=receiptPrompt(m);
+    const txt=await ai(prompt,false,imgs);
     const mt=txt.match(/\{[\s\S]*\}/);if(!mt)throw new Error("ما قدرتش أقرا الإيصال. صوّره تاني في نور كويس ومن غير ميل.");
     const r=JSON.parse(mt[0]);if(!Array.isArray(r.items)||!r.items.length)throw new Error("ما لقيتش أصناف في الصورة.");
-    r.items=r.items.map(x=>{const g=x.new_group&&m.groups.find(g=>g.name===x.new_group);return{name:x.name,amount:+x.amount||0,qty:+x.qty||null,unit:x.unit||"",
-      unitPrice:+x.unit_price||null,priceKey:PK.some(p=>p[0]===x.price_key)?x.price_key:"",target:x.target||"",newName:x.target?"":(x.new_item||""),newGroup:g?g.id:""}});
+    r.items=aiItems(r,m);
     closeSheet();receiptSheet(r);
   }catch(e){if(status){status.textContent=e.message||String(e);status.style.color="var(--danger)"}}
 }
+function aiItems(r,m){
+  return r.items.map(x=>{const g=x.new_group&&m.groups.find(g=>g.name===x.new_group);return{name:x.name,amount:+x.amount||0,qty:+x.qty||null,unit:x.unit||"",
+      unitPrice:+x.unit_price||null,priceKey:PK.some(p=>p[0]===x.price_key)?x.price_key:"",target:x.target||"",newName:x.target?"":(x.new_item||""),newGroup:g?g.id:""}});
+}
+function receiptPrompt(m){
+    const items=[];m.groups.forEach(g=>g.items.forEach(it=>items.push(`${it.id} = ${g.name} / ${it.name}`)));
+    const keys=PK.map(p=>p[0]).join("، ");
+    return `دي صورة إيصال شراء من مصر (ممكن تكون أكتر من صورة لنفس الإيصال). استخرج كل صنف اتشرى بسعره النهائي بعد أي خصم.\n\nوزّع كل صنف على أنسب بند من بنود ميزانيتي دي (اكتب الـid بالظبط):\n${items.join("\n")}\n\nلو مفيش بند مناسب خلي target فاضي واقترح اسم بند جديد قصير في new_item واسم المجموعة اللي يتحط فيها من أسماء المجموعات اللي فوق في new_group.\nلو الصنف بيتباع بالوزن أو الحجم أو العدد، حط الكمية الإجمالية في qty ووحدتها في unit (kg أو L أو egg) وسعر الوحدة في unit_price. مثال: 3 كيلو لحمة بـ 300 → qty 3، unit kg، unit_price 100. وحط في price_key واحد من دول لو الصنف منهم: ${keys}، أو سيبه فاضي.\nلو ده إيصال فيزا أو ماكينة دفع من البنك ومفيهوش أصناف، رجّع صنف واحد اسمه اسم التاجر بالمبلغ، واختار البند حسب نوع المكان (بنزينة → بنزين، كافيه → كافيه، مطعم → مطاعم ودليفري، صيدلية، محل لبس، إلخ).\nتجاهل سطور الإجمالي والضريبة والفكة وطريقة الدفع، بس لو فيه رسوم خدمة أو توصيل حطها كصنف. لو فيه خصم على الفاتورة كلها وزّعه على الأصناف بالنسبة.\n\nرد بـ JSON بس من غير أي كلام تاني بالشكل ده:\n{"store":"اسم المحل","date":"YYYY-MM-DD","total":0,"items":[{"name":"اسم الصنف زي ما هو مكتوب","amount":0,"qty":0,"unit":"","unit_price":0,"price_key":"","target":"id","new_item":"","new_group":""}]}`;
+}
+
 function receiptSheet(r){
   const m=M(),all=[];m.groups.forEach(g=>g.items.forEach(it=>all.push({it,g})));
   const map=D.settings.receiptMap||(D.settings.receiptMap={});
@@ -774,6 +833,20 @@ function post(url,headers,body){return new Promise(res=>{
   if(Bridge&&Bridge.httpPost){const id=uid();window.__httpCb[id]=(s,t)=>res({status:s,text:t});Bridge.httpPost(url,JSON.stringify(headers),body,id)}
   else fetch(url,{method:"POST",headers,body}).then(async r=>res({status:r.status,text:await r.text()})).catch(e=>res({status:0,text:String(e)}));
 })}
+const useOpenAI=()=>D.settings.aiProvider!=="claude";
+const hasAIKey=()=>useOpenAI()?!!D.settings.openaiKey:!!D.settings.apiKey;
+async function ai(prompt,useSearch,images){
+  if(!useOpenAI())return claude(prompt,useSearch,images);
+  if(useSearch)throw new Error("التحديث من النت شغال مع Claude بس. مع ChatGPT الأسعار بتتحدث لوحدها من الإيصالات اللي بتسجلها، أو عدّلها بإيدك.");
+  const key=D.settings.openaiKey;if(!key)throw new Error("حط مفتاح OpenAI API الأول من الإعدادات");
+  const content=[{type:"text",text:prompt}].concat((images||[]).map(d=>({type:"image_url",image_url:{url:"data:image/jpeg;base64,"+d}})));
+  const body={model:D.settings.openaiModel||"gpt-6-luna",max_completion_tokens:4000,messages:[{role:"user",content}]};
+  const r=await post("https://api.openai.com/v1/chat/completions",{"content-type":"application/json","authorization":"Bearer "+key},JSON.stringify(body));
+  let j;try{j=JSON.parse(r.text)}catch(e){throw new Error("مفيش رد. اتأكد من النت")}
+  if(r.status!==200)throw new Error((j.error&&j.error.message)||("خطأ "+r.status));
+  const c=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+  return Array.isArray(c)?c.map(x=>x.text||"").join("\n"):String(c||"");
+}
 async function claude(prompt,useSearch,images){
   const key=D.settings.apiKey;if(!key)throw new Error("حط مفتاح الـAPI الأول");
   const content=images&&images.length?images.map(d=>({type:"image",source:{type:"base64",media_type:"image/jpeg",data:d}})).concat([{type:"text",text:prompt}]):prompt;
@@ -788,7 +861,7 @@ async function aiPrices(out){
   out.hidden=false;out.textContent="بيدوّر على الأسعار… ممكن ياخد دقيقة";
   const keys=PRICE_DEFS.map(([k,t])=>`${k}: ${t}`).join("\n");
   try{
-    const txt=await claude(`ابحث على النت عن أحدث أسعار المستهلك في مصر النهارده بالجنيه المصري للسلع دي، واستخدم أحدث مصادر إخبارية مصرية:\n${keys}\n\nرد بـ JSON بس من غير أي كلام تاني، المفاتيح بالإنجليزي زي ما هي والقيم أرقام، وضيف مفتاح "note" فيه تاريخ الأسعار بالعربي في جملة قصيرة.`,true);
+    const txt=await ai(`ابحث على النت عن أحدث أسعار المستهلك في مصر النهارده بالجنيه المصري للسلع دي، واستخدم أحدث مصادر إخبارية مصرية:\n${keys}\n\nرد بـ JSON بس من غير أي كلام تاني، المفاتيح بالإنجليزي زي ما هي والقيم أرقام، وضيف مفتاح "note" فيه تاريخ الأسعار بالعربي في جملة قصيرة.`,true);
     const mt=txt.match(/\{[\s\S]*\}/);if(!mt)throw new Error("الرد مش مفهوم");
     const obj=JSON.parse(mt[0]);let n=0;
     PRICE_DEFS.forEach(([k])=>{const v=+obj[k];if(v>0){D.settings.prices[k]=Math.round(v*100)/100;n++}});
@@ -802,7 +875,7 @@ async function aiReview(out){
   const lines=m.groups.map((g,i)=>`${g.name}: ${g.items.map(it=>`${it.name} ${val(it.plan)}`).join("، ")}`).join("\n");
   const fam=D.family.map(p=>`${p.name||"فرد"} ${p.age} سنة`).join("، ")||"مش محدد";
   try{
-    const txt=await claude(`أنا في مصر. ده ملخص ميزانيتي لشهر ${mlabel(curKey)}:\nالدخل ${fmt(c.income)}، التوفير ${val(m.savingsPct)}%، الحد الأقصى للصرف ${D.settings.spendLimitPct}% من الدخل.\nالأسرة: ${fam}.\nالمعقول المحسوب للأكل: ${est?JSON.stringify(est):"غير متاح"}.\nالبنود:\n${lines}\nاتصرف لحد دلوقتي ${fmt(c.actual)}.\n\nراجعها بالعامية المصرية في 6 نقط قصيرة بالكتير: فين الصرف عالي، وأنهي بند أوفر فيه وأد إيه بالظبط، وهل نسبة التوفير والأقساط معقولة. من غير مقدمات.`,false);
+    const txt=await ai(`أنا في مصر. ده ملخص ميزانيتي لشهر ${mlabel(curKey)}:\nالدخل ${fmt(c.income)}، التوفير ${val(m.savingsPct)}%، الحد الأقصى للصرف ${D.settings.spendLimitPct}% من الدخل.\nالأسرة: ${fam}.\nالمعقول المحسوب للأكل: ${est?JSON.stringify(est):"غير متاح"}.\nالبنود:\n${lines}\nاتصرف لحد دلوقتي ${fmt(c.actual)}.\n\nراجعها بالعامية المصرية في 6 نقط قصيرة بالكتير: فين الصرف عالي، وأنهي بند أوفر فيه وأد إيه بالظبط، وهل نسبة التوفير والأقساط معقولة. من غير مقدمات.`,false);
     out.textContent=txt;
   }catch(e){out.textContent=e.message}
 }
